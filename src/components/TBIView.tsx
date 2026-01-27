@@ -51,56 +51,56 @@ export function TBIView({ onExit }: TBIViewProps) {
   return (
     <div className="fixed inset-0 bg-slate-900 text-white overflow-auto z-50">
       {/* Header */}
-      <div className="sticky top-0 bg-slate-800 px-8 py-4 flex items-center justify-between shadow-lg">
+      <div className="sticky top-0 bg-slate-800 px-4 py-2 flex items-center justify-between shadow-lg">
         <div>
-          <h1 className="text-4xl font-bold">Comportement</h1>
-          <p className="text-xl text-slate-400">Semaine {week} ({year})</p>
+          <h1 className="text-2xl font-bold">Comportement</h1>
+          <p className="text-sm text-slate-400">Semaine {week} ({year})</p>
         </div>
         <button
           onClick={onExit}
-          className="px-6 py-3 bg-red-600 hover:bg-red-700 rounded-xl text-2xl font-bold transition-colors"
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg text-lg font-bold transition-colors"
         >
           ✕ Quitter
         </button>
       </div>
 
       {/* Students grid */}
-      <div className="p-8 pb-28">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="p-4 pb-20">
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 2xl:grid-cols-8 gap-3">
           {sortedStudents.map((student) => (
             <div
               key={student.id}
               className={`
-                p-4 rounded-2xl transition-all
+                p-2 rounded-xl transition-all
                 ${student.weekSanctionCount > 0
-                  ? 'bg-red-900 border-4 border-red-500'
-                  : 'bg-slate-800 border-4 border-slate-600'
+                  ? 'bg-red-900 border-2 border-red-500'
+                  : 'bg-slate-800 border-2 border-slate-600'
                 }
               `}
             >
               {/* Name */}
-              <div className="text-2xl font-bold mb-3 text-center truncate">
+              <div className="text-sm font-bold mb-1 text-center truncate">
                 {student.firstName}
               </div>
 
               {/* Warnings */}
-              <div className="flex justify-center gap-2 mb-3 min-h-[40px]">
+              <div className="flex justify-center gap-1 mb-1 min-h-[24px]">
                 {student.warnings >= 1 && (
-                  <span className="text-4xl">⚠️</span>
+                  <span className="text-xl">⚠️</span>
                 )}
                 {student.warnings >= 2 && (
-                  <span className="text-4xl">⚠️</span>
+                  <span className="text-xl">⚠️</span>
                 )}
               </div>
 
               {/* Sanctions - cliquables pour modifier la raison */}
               {student.weekSanctionCount > 0 && (
-                <div className="flex flex-wrap justify-center gap-1 mb-3">
+                <div className="flex flex-wrap justify-center gap-0.5 mb-1">
                   {student.sanctions.map((sanction, i) => (
                     <button
                       key={sanction.id}
                       onClick={() => handleEditSanction(student, sanction)}
-                      className={`text-3xl cursor-pointer hover:scale-125 transition-transform ${
+                      className={`text-lg cursor-pointer hover:scale-110 transition-transform ${
                         sanction.reason ? 'opacity-100' : 'opacity-70'
                       }`}
                       title={sanction.reason || `Sanction ${i + 1} - Cliquer pour ajouter une raison`}
@@ -109,7 +109,7 @@ export function TBIView({ onExit }: TBIViewProps) {
                     </button>
                   ))}
                   {student.weekSanctionCount >= 10 && (
-                    <span className="ml-2 px-3 py-1 bg-red-600 text-white text-lg font-bold rounded-lg">
+                    <span className="ml-1 px-1 py-0.5 bg-red-600 text-white text-[10px] font-bold rounded">
                       MAX
                     </span>
                   )}
@@ -118,15 +118,15 @@ export function TBIView({ onExit }: TBIViewProps) {
 
               {/* Clean slate indicator */}
               {student.warnings === 0 && student.weekSanctionCount === 0 && (
-                <div className="text-center text-4xl mb-3">😊</div>
+                <div className="text-center text-xl mb-1">😊</div>
               )}
 
               {/* Action buttons */}
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-1 mt-1">
                 <button
                   onClick={() => addWarning(student.id)}
                   disabled={student.warnings >= 2 && student.weekSanctionCount >= 10}
-                  className="flex-1 py-3 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-xl font-bold transition-colors"
+                  className="flex-1 py-1.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-bold transition-colors"
                   title="Avertissement"
                 >
                   ⚠️
@@ -134,7 +134,7 @@ export function TBIView({ onExit }: TBIViewProps) {
                 <button
                   onClick={() => handleNewSanction(student)}
                   disabled={student.weekSanctionCount >= 10}
-                  className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-xl font-bold transition-colors"
+                  className="flex-1 py-1.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-lg text-sm font-bold transition-colors"
                   title="Sanction directe"
                 >
                   🙁
@@ -145,25 +145,25 @@ export function TBIView({ onExit }: TBIViewProps) {
         </div>
 
         {students.length === 0 && (
-          <div className="text-center py-20">
-            <p className="text-4xl text-slate-500">Aucun élève</p>
+          <div className="text-center py-12">
+            <p className="text-2xl text-slate-500">Aucun élève</p>
           </div>
         )}
       </div>
 
       {/* Footer legend */}
-      <div className="fixed bottom-0 left-0 right-0 bg-slate-800 px-8 py-4 flex justify-center gap-8 text-lg">
-        <div className="flex items-center gap-2">
-          <span className="text-2xl">😊</span>
-          <span className="text-slate-400">Aucun problème</span>
+      <div className="fixed bottom-0 left-0 right-0 bg-slate-800 px-4 py-2 flex justify-center gap-4 text-sm">
+        <div className="flex items-center gap-1">
+          <span className="text-lg">😊</span>
+          <span className="text-slate-400">OK</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-amber-600 rounded-lg text-xl">⚠️</span>
+        <div className="flex items-center gap-1">
+          <span className="px-2 py-0.5 bg-amber-600 rounded text-base">⚠️</span>
           <span className="text-slate-400">Avertissement</span>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 bg-red-600 rounded-lg text-xl">🙁</span>
-          <span className="text-slate-400">Sanction directe</span>
+        <div className="flex items-center gap-1">
+          <span className="px-2 py-0.5 bg-red-600 rounded text-base">🙁</span>
+          <span className="text-slate-400">Sanction</span>
         </div>
       </div>
 

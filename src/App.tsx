@@ -36,40 +36,40 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 p-4">
-      <header className="mb-6 flex items-center justify-between">
+    <div className="min-h-screen bg-slate-100 p-2">
+      <header className="mb-3 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">
+          <h1 className="text-xl font-bold text-slate-800">
             Comportement
           </h1>
-          <p className="text-slate-600">
+          <p className="text-xs text-slate-600">
             Suivi du comportement des élèves
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => setShowSettings(true)}
-            className="px-3 py-2 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded-lg transition-colors"
+            className="px-2 py-1 text-slate-500 hover:text-slate-700 hover:bg-slate-200 rounded transition-colors"
             title="Paramètres"
           >
             ⚙️
           </button>
           <button
             onClick={() => setIsTBIMode(true)}
-            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-900 transition-colors flex items-center gap-2"
+            className="px-3 py-1.5 text-sm bg-slate-800 text-white rounded hover:bg-slate-900 transition-colors flex items-center gap-1"
             title="Mode TBI plein écran (F11)"
           >
-            <span className="text-xl">📺</span>
+            <span className="text-base">📺</span>
             Mode TBI
           </button>
         </div>
       </header>
 
-      <main className="bg-white rounded-lg shadow p-6 max-w-3xl">
+      <main className="bg-white rounded-lg shadow p-3 max-w-2xl">
         <StudentList />
       </main>
 
-      <footer className="mt-4 text-center text-sm text-slate-400">
+      <footer className="mt-2 text-center text-xs text-slate-400">
         Appuyez sur F11 pour basculer en mode TBI
       </footer>
 

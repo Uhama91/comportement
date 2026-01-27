@@ -61,7 +61,7 @@ export function StudentList() {
           <p className="text-sm">Ajoutez votre premier élève ci-dessus</p>
         </div>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1">
           {students.map((student) => (
             <StudentCard key={student.id} student={student} />
           ))}
