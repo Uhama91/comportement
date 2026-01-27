@@ -1,73 +1,88 @@
-# React + TypeScript + Vite
+# Comportement
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Application desktop pour le suivi du comportement des élèves en classe élémentaire. Remplace le traditionnel système de tableau physique avec émojis par une interface numérique rapide, intuitive et adaptée à l'affichage sur TBI (Tableau Blanc Interactif).
 
-Currently, two official plugins are available:
+## Fonctionnalités
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Gestion des élèves** : Ajout, modification et suppression (limite 30 élèves)
+- **Système d'avertissements** : 3 niveaux (⚠️) — le 3ème se convertit automatiquement en sanction
+- **Système de sanctions** : Émojis 🙁 (max 10 par semaine par élève)
+- **Sanction directe** : Possibilité de donner une sanction sans passer par les avertissements
+- **Reset automatique** : Avertissements remis à zéro chaque jour à 16h30
+- **Mode TBI** : Interface plein écran optimisée pour l'affichage sur tableau interactif
+- **Historique** : Suivi hebdomadaire des sanctions avec export JSON
+- **Tri intelligent** : Élèves sanctionnés affichés en premier
 
-## React Compiler
+## Captures d'écran
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Vue compacte (enseignant)
+Interface de bureau pour gérer rapidement les avertissements et sanctions.
 
-## Expanding the ESLint configuration
+### Mode TBI
+Interface plein écran avec grandes zones tactiles pour utilisation sur tableau interactif.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Installation
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Windows
+Téléchargez le dernier installateur depuis les [Releases](https://github.com/Uhama91/comportement/releases) :
+- **`.msi`** : Installateur Windows standard (recommandé pour environnements professionnels)
+- **`.exe`** : Installateur NSIS (plus compact)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+### Développement
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Prérequis :
+- Node.js 20+
+- Rust (stable)
+
+```bash
+# Cloner le repo
+git clone https://github.com/Uhama91/comportement.git
+cd comportement
+
+# Installer les dépendances
+npm install
+
+# Lancer en mode développement
+npm run tauri dev
+
+# Build production
+npm run tauri build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Stack technique
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+| Composant | Technologie |
+|-----------|-------------|
+| Framework | Tauri 2.0 |
+| Frontend | React 19 + TypeScript |
+| Backend | Rust |
+| Base de données | SQLite (local) |
+| State | Zustand |
+| Styling | Tailwind CSS v4 |
+| Build | Vite |
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Pourquoi Tauri ?
+
+- **Léger** : Installateur ~4 Mo vs ~150 Mo pour Electron
+- **Rapide** : Performances natives grâce à Rust
+- **Sécurisé** : Pas de Node.js embarqué, surface d'attaque réduite
+- **Local** : Toutes les données restent sur l'ordinateur (SQLite)
+
+## Structure du projet
+
 ```
+comportement/
+├── src/                    # Code React/TypeScript
+│   ├── components/         # Composants UI
+│   ├── stores/             # State Zustand
+│   ├── types/              # Types TypeScript
+│   └── utils/              # Utilitaires (dates, etc.)
+├── src-tauri/              # Code Rust/Tauri
+│   ├── src/                # Backend Rust
+│   └── tauri.conf.json     # Configuration Tauri
+└── .github/workflows/      # CI/CD GitHub Actions
+```
+
+## Licence
+
+MIT
