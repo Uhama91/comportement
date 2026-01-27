@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
-import type { StudentWithSanctions, WeekSummary, ExportData, Student } from '../types';
+import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction } from '../types';
 import { getCurrentWeek, shouldResetWarnings, markResetDone } from '../utils/date';
 
 interface StudentStore {
@@ -17,6 +17,7 @@ interface StudentStore {
   removeWarning: (studentId: number) => Promise<void>;
   addSanction: (studentId: number, reason?: string) => Promise<void>;
   removeSanction: (studentId: number) => Promise<void>;
+  updateSanctionReason: (sanctionId: number, reason: string) => Promise<void>;
   resetAllWarnings: () => Promise<void>;
 
   // Export & History
@@ -69,9 +70,32 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
           s.first_name ASC
       `, [week, year]);
 
+      // Load sanctions for current week with details
+      const sanctions = await db.select<any[]>(`
+        SELECT
+          id,
+          student_id as studentId,
+          reason,
+          week_number as weekNumber,
+          year,
+          created_at as createdAt
+        FROM sanctions
+        WHERE week_number = $1 AND year = $2
+        ORDER BY created_at ASC
+      `, [week, year]);
+
+      // Map sanctions to students
+      const sanctionsByStudent = new Map<number, Sanction[]>();
+      for (const s of sanctions) {
+        if (!sanctionsByStudent.has(s.studentId)) {
+          sanctionsByStudent.set(s.studentId, []);
+        }
+        sanctionsByStudent.get(s.studentId)!.push(s);
+      }
+
       const studentsWithSanctions: StudentWithSanctions[] = students.map(s => ({
         ...s,
-        sanctions: [],
+        sanctions: sanctionsByStudent.get(s.id) || [],
       }));
 
       set({ students: studentsWithSanctions, isLoading: false });
@@ -232,6 +256,20 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
       await get().loadStudents();
     } catch (error) {
       console.error('Error removing sanction:', error);
+      set({ error: String(error) });
+    }
+  },
+
+  updateSanctionReason: async (sanctionId: number, reason: string) => {
+    try {
+      const db = await getDb();
+      await db.execute(
+        'UPDATE sanctions SET reason = $1 WHERE id = $2',
+        [reason.trim() || null, sanctionId]
+      );
+      await get().loadStudents();
+    } catch (error) {
+      console.error('Error updating sanction reason:', error);
       set({ error: String(error) });
     }
   },

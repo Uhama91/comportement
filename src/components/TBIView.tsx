@@ -1,13 +1,21 @@
+import { useState } from 'react';
 import { useStudentStore } from '../stores/studentStore';
 import { getCurrentWeek } from '../utils/date';
+import { SanctionReasonModal } from './SanctionReasonModal';
+import type { Sanction, StudentWithSanctions } from '../types';
 
 interface TBIViewProps {
   onExit: () => void;
 }
 
 export function TBIView({ onExit }: TBIViewProps) {
-  const { students, addWarning, addSanction } = useStudentStore();
+  const { students, addWarning, addSanction, updateSanctionReason } = useStudentStore();
   const { week, year } = getCurrentWeek();
+
+  // Modal state
+  const [showReasonModal, setShowReasonModal] = useState(false);
+  const [editingSanction, setEditingSanction] = useState<Sanction | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithSanctions | null>(null);
 
   // Students with sanctions first, then alphabetical
   const sortedStudents = [...students].sort((a, b) => {
@@ -16,6 +24,29 @@ export function TBIView({ onExit }: TBIViewProps) {
     }
     return a.firstName.localeCompare(b.firstName);
   });
+
+  // Open modal for new sanction
+  const handleNewSanction = (student: StudentWithSanctions) => {
+    setSelectedStudent(student);
+    setEditingSanction(null);
+    setShowReasonModal(true);
+  };
+
+  // Open modal to edit existing sanction
+  const handleEditSanction = (student: StudentWithSanctions, sanction: Sanction) => {
+    setSelectedStudent(student);
+    setEditingSanction(sanction);
+    setShowReasonModal(true);
+  };
+
+  // Confirm sanction (new or edit)
+  const handleConfirmReason = async (reason: string) => {
+    if (editingSanction) {
+      await updateSanctionReason(editingSanction.id, reason);
+    } else if (selectedStudent) {
+      await addSanction(selectedStudent.id, reason || undefined);
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-slate-900 text-white overflow-auto z-50">
@@ -34,7 +65,7 @@ export function TBIView({ onExit }: TBIViewProps) {
       </div>
 
       {/* Students grid */}
-      <div className="p-8">
+      <div className="p-8 pb-28">
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
           {sortedStudents.map((student) => (
             <div
@@ -62,11 +93,20 @@ export function TBIView({ onExit }: TBIViewProps) {
                 )}
               </div>
 
-              {/* Sanctions */}
+              {/* Sanctions - cliquables pour modifier la raison */}
               {student.weekSanctionCount > 0 && (
                 <div className="flex flex-wrap justify-center gap-1 mb-3">
-                  {Array.from({ length: Math.min(student.weekSanctionCount, 10) }).map((_, i) => (
-                    <span key={i} className="text-3xl">🙁</span>
+                  {student.sanctions.map((sanction, i) => (
+                    <button
+                      key={sanction.id}
+                      onClick={() => handleEditSanction(student, sanction)}
+                      className={`text-3xl cursor-pointer hover:scale-125 transition-transform ${
+                        sanction.reason ? 'opacity-100' : 'opacity-70'
+                      }`}
+                      title={sanction.reason || `Sanction ${i + 1} - Cliquer pour ajouter une raison`}
+                    >
+                      🙁
+                    </button>
                   ))}
                   {student.weekSanctionCount >= 10 && (
                     <span className="ml-2 px-3 py-1 bg-red-600 text-white text-lg font-bold rounded-lg">
@@ -92,7 +132,7 @@ export function TBIView({ onExit }: TBIViewProps) {
                   ⚠️
                 </button>
                 <button
-                  onClick={() => addSanction(student.id, 'Sanction directe')}
+                  onClick={() => handleNewSanction(student)}
                   disabled={student.weekSanctionCount >= 10}
                   className="flex-1 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl text-xl font-bold transition-colors"
                   title="Sanction directe"
@@ -126,6 +166,15 @@ export function TBIView({ onExit }: TBIViewProps) {
           <span className="text-slate-400">Sanction directe</span>
         </div>
       </div>
+
+      {/* Modal raison sanction */}
+      <SanctionReasonModal
+        isOpen={showReasonModal}
+        onClose={() => setShowReasonModal(false)}
+        onConfirm={handleConfirmReason}
+        existingSanction={editingSanction}
+        studentName={selectedStudent?.firstName || ''}
+      />
     </div>
   );
 }
