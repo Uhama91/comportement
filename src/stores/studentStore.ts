@@ -288,8 +288,6 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
   getHistory: async (weeks: number = 36) => {
     try {
       const db = await getDb();
-      const { week: currentWeek, year: currentYear } = getCurrentWeek();
-      const history: WeekSummary[] = [];
 
       // Get all sanctions grouped by week
       const allSanctions = await db.select<any[]>(`

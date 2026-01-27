@@ -4,7 +4,7 @@ import { useStudentStore } from '../stores/studentStore';
 export function AddStudentForm() {
   const [firstName, setFirstName] = useState('');
   const [isAdding, setIsAdding] = useState(false);
-  const { addStudent, error, students } = useStudentStore();
+  const { addStudent, students } = useStudentStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

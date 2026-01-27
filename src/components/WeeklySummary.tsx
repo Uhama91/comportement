@@ -61,7 +61,7 @@ export function WeeklySummary() {
                   >
                     <span className="text-slate-700">{student.firstName}</span>
                     <span className="text-red-600 font-medium">
-                      {student.sanctionCount} {Array.from({ length: Math.min(student.sanctionCount, 5) }).map((_, i) => '🙁').join('')}
+                      {student.sanctionCount} {Array.from({ length: Math.min(student.sanctionCount, 5) }).map(() => '🙁').join('')}
                     </span>
                   </div>
                 ))}
