@@ -36,6 +36,27 @@ pub fn run() {
             CREATE INDEX IF NOT EXISTS idx_sanctions_week ON sanctions(week_number, year);",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "create_daily_rewards_table",
+            sql: "CREATE TABLE IF NOT EXISTS daily_rewards (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                day_of_week INTEGER NOT NULL CHECK (day_of_week IN (1, 2, 4, 5)),
+                week_number INTEGER NOT NULL,
+                year INTEGER NOT NULL,
+                reward_type TEXT NOT NULL CHECK (reward_type IN ('full', 'partial')),
+                cancelled INTEGER DEFAULT 0,
+                cancelled_by_sanction_id INTEGER,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                FOREIGN KEY (cancelled_by_sanction_id) REFERENCES sanctions(id) ON DELETE SET NULL,
+                UNIQUE(student_id, day_of_week, week_number, year)
+            );
+            CREATE INDEX IF NOT EXISTS idx_rewards_student ON daily_rewards(student_id);
+            CREATE INDEX IF NOT EXISTS idx_rewards_week ON daily_rewards(week_number, year);",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

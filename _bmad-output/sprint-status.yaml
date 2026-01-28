@@ -1,0 +1,379 @@
+# Sprint Status - Comportement V2
+# Généré: 2026-01-28
+# Workflow: BMAD Sprint Planning
+
+project: comportement
+version: "2.0"
+sprint_start: "2026-01-28"
+current_phase: implementation
+
+# ============================================
+# SPRINT 1: Refonte Interface Cartes (Epic 8)
+# Priorité: HAUTE - Base visuelle pour tout le reste
+# ============================================
+
+sprint_1:
+  name: "Refonte Interface Cartes"
+  epic: 8
+  status: "in_progress"
+  stories:
+    - id: "8.1"
+      title: "Layout en grille de cartes"
+      status: "completed"
+      priority: "P0"
+      estimated_complexity: "medium"
+      description: |
+        Remplacer StudentList par StudentGrid
+        - Grille CSS adaptive (18-28 élèves)
+        - Ordre alphabétique fixe
+        - Pas de scroll
+      acceptance_criteria:
+        - "Grille affiche tous les élèves sans scroll"
+        - "Ordre alphabétique ne change jamais"
+        - "S'adapte à 18 et 28 élèves"
+      files_to_modify:
+        - "src/components/StudentGrid/StudentGrid.tsx"
+        - "src/components/StudentGrid/StudentGridCard.tsx"
+        - "src/App.tsx"
+      depends_on: []
+
+    - id: "8.2"
+      title: "Contenu carte élève"
+      status: "completed"
+      priority: "P0"
+      estimated_complexity: "medium"
+      description: |
+        Chaque carte affiche:
+        - Prénom + avertissements (⚠️)
+        - Ligne hebdo L-M-J-V (placeholder pour l'instant)
+        - Boutons Avertir/Sanctionner
+      acceptance_criteria:
+        - "Prénom visible avec indicateur avertissements"
+        - "Emplacement réservé pour ligne L-M-J-V"
+        - "Boutons fonctionnels"
+      files_to_modify:
+        - "src/components/StudentGrid/StudentGridCard.tsx"
+        - "src/components/StudentGrid/WeeklyRewardLine.tsx"
+      depends_on: ["8.1"]
+
+    - id: "8.3"
+      title: "Adaptation responsive sans scroll"
+      status: "not_started"
+      priority: "P1"
+      estimated_complexity: "medium"
+      description: |
+        CSS Grid auto-fit pour écran 16:9
+        - Taille cartes dynamique
+        - Min-size pour lisibilité
+        - Viewport units
+      acceptance_criteria:
+        - "1920x1080 affiche 18 élèves lisibles"
+        - "1920x1080 affiche 28 élèves lisibles"
+        - "Aucun scroll horizontal ou vertical"
+      files_to_modify:
+        - "src/components/StudentGrid/StudentGrid.tsx"
+        - "src/App.css"
+      depends_on: ["8.1"]
+
+    - id: "8.4"
+      title: "Mode TBI avec grille cartes"
+      status: "completed"
+      priority: "P1"
+      estimated_complexity: "low"
+      description: |
+        TBIView utilise StudentGrid
+        - Même layout que mode compact
+        - Police plus grande
+        - Contraste élevé
+      acceptance_criteria:
+        - "TBI utilise la grille de cartes"
+        - "Lisible à 6 mètres"
+        - "Mise à jour temps réel"
+      files_to_modify:
+        - "src/components/TBIView.tsx"
+      depends_on: ["8.1", "8.2"]
+
+# ============================================
+# SPRINT 2: Système Récompenses (Epic 7)
+# Priorité: HAUTE - Fonctionnalité principale V2
+# ============================================
+
+sprint_2:
+  name: "Système de Récompenses"
+  epic: 7
+  status: "in_progress"
+  stories:
+    - id: "7.1"
+      title: "Table daily_rewards SQLite"
+      status: "completed"
+      priority: "P0"
+      estimated_complexity: "low"
+      description: |
+        Créer table daily_rewards
+        - student_id, date, day_of_week, reward_type
+        - Index pour performance
+        - Migration depuis schema existant
+      acceptance_criteria:
+        - "Table créée au démarrage"
+        - "Contrainte UNIQUE student_id+date"
+        - "Index fonctionnels"
+      files_to_modify:
+        - "src-tauri/src/db/init.rs"
+        - "src/types/index.ts"
+      depends_on: []
+
+    - id: "7.2"
+      title: "Attribution automatique 16h30"
+      status: "completed"
+      priority: "P0"
+      estimated_complexity: "high"
+      description: |
+        Scheduler Rust pour attribution
+        - Vérifie jour travaillé (L-M-J-V)
+        - Calcule reward_type selon avertissements
+        - Attribution silencieuse
+      acceptance_criteria:
+        - "Attribution à 16h30 jours travaillés"
+        - "Mercredi ignoré"
+        - "full si 0 avert, partial si 1-2"
+      files_to_modify:
+        - "src-tauri/src/scheduler/rewards.rs"
+        - "src-tauri/src/main.rs"
+      depends_on: ["7.1"]
+
+    - id: "7.3"
+      title: "Annulation par sanction"
+      status: "completed"
+      priority: "P0"
+      estimated_complexity: "medium"
+      description: |
+        Quand sanction ajoutée:
+        - Chercher dernier partial (🙂) → cancelled
+        - Sinon dernier full (😊) → cancelled
+      acceptance_criteria:
+        - "Sanction annule partial en priorité"
+        - "Sinon annule full"
+        - "Mise à jour immédiate UI"
+      files_to_modify:
+        - "src-tauri/src/commands/sanctions.rs"
+        - "src/stores/studentStore.ts"
+      depends_on: ["7.1"]
+
+    - id: "7.4"
+      title: "Affichage ligne L-M-J-V"
+      status: "completed"
+      priority: "P0"
+      estimated_complexity: "medium"
+      description: |
+        Composant WeeklyRewardLine
+        - Affiche jours écoulés seulement
+        - Emojis 😊🙂🙁 selon reward_type
+        - Intégré dans StudentGridCard
+      acceptance_criteria:
+        - "Affiche uniquement jours passés"
+        - "Emojis corrects par jour"
+        - "Mise à jour temps réel"
+      files_to_modify:
+        - "src/components/StudentGrid/WeeklyRewardLine.tsx"
+        - "src/stores/studentStore.ts"
+        - "src/utils/dateUtils.ts"
+      depends_on: ["7.1", "8.2"]
+
+    - id: "7.5"
+      title: "Reset hebdomadaire récompenses"
+      status: "not_started"
+      priority: "P1"
+      estimated_complexity: "low"
+      description: |
+        Reset le lundi avec sanctions
+        - Archive ou supprime anciennes récompenses
+        - Ligne L-M-J-V vide nouvelle semaine
+      acceptance_criteria:
+        - "Reset lundi automatique"
+        - "Historique conservé si besoin"
+        - "UI reflète reset"
+      files_to_modify:
+        - "src-tauri/src/scheduler/resets.rs"
+      depends_on: ["7.1", "7.2"]
+
+# ============================================
+# SPRINT 3: Barre Latérale (Epic 9)
+# Priorité: MOYENNE - Fonctionnalité indépendante
+# ============================================
+
+sprint_3:
+  name: "Barre Latérale d'Accès Rapide"
+  epic: 9
+  status: "not_started"
+  stories:
+    - id: "9.1"
+      title: "Barre fine bord droit"
+      status: "not_started"
+      priority: "P0"
+      estimated_complexity: "high"
+      description: |
+        Fenêtre Tauri séparée
+        - 10-15px largeur
+        - Position bord droit écran
+        - Always on top
+        - Sans décoration
+      acceptance_criteria:
+        - "Barre visible bord droit"
+        - "Reste au premier plan"
+        - "Ne gêne pas autres apps"
+      files_to_modify:
+        - "src-tauri/tauri.conf.json"
+        - "src/components/Sidebar/SidebarTrigger.tsx"
+        - "src-tauri/src/main.rs"
+      depends_on: []
+
+    - id: "9.2"
+      title: "Expansion/collapse au clic"
+      status: "not_started"
+      priority: "P0"
+      estimated_complexity: "medium"
+      description: |
+        Clic toggle la largeur
+        - Collapsed: ~15px
+        - Expanded: ~250-300px
+        - Animation fluide
+      acceptance_criteria:
+        - "Clic ouvre le panel"
+        - "Second clic ferme"
+        - "Animation < 300ms"
+      files_to_modify:
+        - "src/components/Sidebar/SidebarPanel.tsx"
+        - "src/stores/studentStore.ts"
+      depends_on: ["9.1"]
+
+    - id: "9.3"
+      title: "Liste minimaliste"
+      status: "not_started"
+      priority: "P1"
+      estimated_complexity: "low"
+      description: |
+        Contenu du panel étendu
+        - Liste scrollable élèves
+        - Prénom + boutons [⚠️][🙁]
+        - Pas de ligne L-M-J-V
+      acceptance_criteria:
+        - "Liste tous les élèves"
+        - "Scroll fluide"
+        - "Boutons visibles"
+      files_to_modify:
+        - "src/components/Sidebar/SidebarStudentRow.tsx"
+        - "src/components/Sidebar/SidebarPanel.tsx"
+      depends_on: ["9.2"]
+
+    - id: "9.4"
+      title: "Actions rapides sans modal"
+      status: "not_started"
+      priority: "P1"
+      estimated_complexity: "low"
+      description: |
+        1 clic = action immédiate
+        - Avertissement direct
+        - Sanction directe (pas de raison)
+        - Feedback visuel
+      acceptance_criteria:
+        - "Clic ⚠️ = avertissement immédiat"
+        - "Clic 🙁 = sanction immédiate"
+        - "Pas de modal"
+      files_to_modify:
+        - "src/components/Sidebar/SidebarStudentRow.tsx"
+      depends_on: ["9.3"]
+
+    - id: "9.5"
+      title: "Synchronisation interface principale"
+      status: "not_started"
+      priority: "P1"
+      estimated_complexity: "low"
+      description: |
+        Actions sidebar reflétées partout
+        - Store Zustand partagé
+        - Update temps réel grille principale
+        - Update TBI si ouvert
+      acceptance_criteria:
+        - "Action sidebar → update grille"
+        - "Annulation récompense fonctionne"
+        - "Cohérence totale"
+      files_to_modify:
+        - "src/stores/studentStore.ts"
+      depends_on: ["9.4"]
+
+# ============================================
+# ORDRE D'IMPLÉMENTATION RECOMMANDÉ
+# ============================================
+
+implementation_order:
+  phase_1:
+    name: "Base Interface Cartes"
+    stories: ["8.1", "8.2", "8.3"]
+    rationale: "Fondation visuelle pour tout le reste"
+
+  phase_2:
+    name: "Système Récompenses Core"
+    stories: ["7.1", "7.4"]
+    rationale: "DB + affichage sans automation"
+
+  phase_3:
+    name: "Automation Récompenses"
+    stories: ["7.2", "7.3", "7.5"]
+    rationale: "Logique métier complète"
+
+  phase_4:
+    name: "TBI Cartes"
+    stories: ["8.4"]
+    rationale: "Finalise Epic 8"
+
+  phase_5:
+    name: "Barre Latérale"
+    stories: ["9.1", "9.2", "9.3", "9.4", "9.5"]
+    rationale: "Feature indépendante en dernier"
+
+# ============================================
+# MÉTRIQUES
+# ============================================
+
+# ============================================
+# SPRINT 4: Améliorations UX (Hotfixes)
+# Priorité: HAUTE - Feedback utilisateur
+# ============================================
+
+sprint_4:
+  name: "Améliorations UX"
+  status: "completed"
+  stories:
+    - id: "10.1"
+      title: "Retrait manuel des avertissements"
+      status: "completed"
+      priority: "P0"
+      description: |
+        Permettre de retirer un avertissement en cas d'erreur
+        - Clic sur ⚠️ existant pour retirer
+
+    - id: "10.2"
+      title: "Mode liste quand fenêtre trop petite"
+      status: "completed"
+      priority: "P0"
+      description: |
+        Quand la fenêtre est trop étroite:
+        - Passer en mode liste verticale
+        - Permettre le scroll
+        - Seuil: < 450px largeur
+
+    - id: "10.3"
+      title: "Boutons adaptatifs à la taille"
+      status: "completed"
+      priority: "P1"
+      description: |
+        Taille des boutons selon viewport:
+        - Petite fenêtre: boutons compacts
+        - Grande fenêtre: boutons normaux
+
+metrics:
+  total_stories: 17
+  stories_not_started: 7
+  stories_in_progress: 0
+  stories_completed: 10
+  estimated_sprints: 4

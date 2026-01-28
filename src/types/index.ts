@@ -14,9 +14,24 @@ export interface Sanction {
   createdAt: string;
 }
 
+export type RewardType = 'full' | 'partial';
+
+export interface DailyReward {
+  id: number;
+  studentId: number;
+  dayOfWeek: number; // 1=Lundi, 2=Mardi, 4=Jeudi, 5=Vendredi (pas de mercredi)
+  weekNumber: number;
+  year: number;
+  rewardType: RewardType; // 'full' = 😊, 'partial' = 🙂
+  cancelled: boolean;
+  cancelledBySanctionId: number | null;
+  createdAt: string;
+}
+
 export interface StudentWithSanctions extends Student {
   sanctions: Sanction[];
   weekSanctionCount: number;
+  weeklyRewards: DailyReward[];
 }
 
 export interface WeekSummary {

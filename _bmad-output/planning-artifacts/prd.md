@@ -431,3 +431,56 @@ Toutes les 6 user journeys sont essentielles au MVP :
 - NFR11: Les émojis sont suffisamment grands pour être distingués à distance
 - NFR12: Pas de clignotements ou animations qui pourraient distraire les élèves
 - NFR13: Palette de couleurs compatible avec le daltonisme (ne pas utiliser uniquement rouge/vert pour différencier)
+
+---
+
+## Functional Requirements - V2 (Nouvelles fonctionnalités)
+
+### Système de Récompenses
+
+- FR35: Le système attribue automatiquement une récompense quotidienne à 16h30
+- FR36: Un élève sans avertissement ni sanction reçoit un émoji positif plein (😊)
+- FR37: Un élève avec 1-2 avertissements mais sans sanction reçoit un émoji atténué (🙂)
+- FR38: Une sanction annule la dernière récompense positive de la semaine (🙂 prioritaire, puis 😊)
+- FR39: Les récompenses sont comptabilisées sur 4 jours : Lundi, Mardi, Jeudi, Vendredi
+- FR40: Le mercredi est exclu du système (jour non travaillé)
+- FR41: Les récompenses se réinitialisent chaque lundi avec les sanctions
+- FR42: L'affichage montre uniquement les jours écoulés de la semaine en cours
+
+### Interface en Cartes
+
+- FR43: L'interface affiche les élèves sous forme de grille de cartes (pas de liste)
+- FR44: L'ordre des élèves est alphabétique fixe (ne change jamais)
+- FR45: Une sanction ne modifie pas la position de l'élève dans la grille
+- FR46: Tous les élèves sont visibles sans scroll (adaptation automatique)
+- FR47: La grille s'adapte au nombre d'élèves (18 à 28)
+- FR48: Chaque carte affiche : prénom, avertissements (⚠️), ligne hebdo (L-M-J-V), boutons
+- FR49: La ligne hebdomadaire est toujours visible sur chaque carte
+- FR50: L'interface cartes s'applique au mode compact ET au mode TBI
+
+### Barre Latérale d'Accès Rapide
+
+- FR51: Une barre fine (~10-15px) est toujours visible sur le bord droit de l'écran
+- FR52: Un clic sur la barre l'étend pour afficher la liste des élèves (~250-300px)
+- FR53: Un second clic replie la barre à sa taille minimale
+- FR54: La barre latérale affiche une liste minimaliste : prénom + boutons uniquement
+- FR55: La barre latérale ne montre PAS la ligne hebdomadaire (trop d'informations)
+- FR56: L'enseignant peut avertir un élève depuis la barre (bouton ⚠️)
+- FR57: L'enseignant peut sanctionner un élève depuis la barre (bouton 🙁)
+- FR58: Les actions depuis la barre sont instantanées (pas de modal)
+- FR59: Les actions depuis la barre se synchronisent avec l'interface principale
+
+---
+
+## Non-Functional Requirements - V2
+
+### Performance (Additions)
+
+- NFR14: L'attribution automatique des récompenses à 16h30 s'exécute en moins de 1 seconde
+- NFR15: La barre latérale s'ouvre/ferme en moins de 300ms
+
+### Interface (Additions)
+
+- NFR16: La grille de cartes s'adapte à un écran 16:9 (1920x1080) sans scroll
+- NFR17: Les cartes restent lisibles avec 28 élèves affichés simultanément
+- NFR18: La barre latérale reste au premier plan au-dessus des autres applications

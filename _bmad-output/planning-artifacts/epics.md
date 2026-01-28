@@ -623,3 +623,336 @@ So that je puisse l'arrêter si nécessaire.
 **When** je fais un clic droit et sélectionne "Quitter"
 **Then** l'application se ferme complètement (FR34)
 **And** l'icône disparaît du tray
+
+---
+
+## Epic 7: Système de Récompenses
+
+L'enseignant peut suivre le comportement positif des élèves avec un système de récompenses automatiques quotidiennes.
+
+**Contexte:** Ce système ajoute une dimension positive au suivi comportemental. Les élèves qui se comportent bien accumulent des émojis positifs, créant une échelle positive/négative plutôt que uniquement punitive.
+
+**Jours concernés:** Lundi, Mardi, Jeudi, Vendredi (pas de mercredi - jour non travaillé)
+
+### Story 7.1: Création de la table daily_rewards
+
+As a développeur,
+I want créer une table SQLite pour stocker les récompenses quotidiennes,
+So that le système puisse persister l'historique des récompenses par jour.
+
+**Acceptance Criteria:**
+
+**Given** la base de données existe
+**When** l'application démarre
+**Then** la table `daily_rewards` est créée avec les colonnes :
+  - `id` INTEGER PRIMARY KEY
+  - `student_id` INTEGER (FK vers students)
+  - `date` TEXT (format "YYYY-MM-DD")
+  - `day_of_week` TEXT ("L", "M", "J", "V")
+  - `reward_type` TEXT ("full", "partial", "cancelled")
+  - `had_warnings` INTEGER (0 ou 1-2)
+  - `created_at` TEXT
+
+**Given** la table existe déjà
+**When** l'application démarre
+**Then** aucune erreur, la table reste intacte
+
+### Story 7.2: Attribution automatique des récompenses à 16h30
+
+As a enseignant,
+I want que les récompenses soient attribuées automatiquement à 16h30,
+So that je n'aie pas d'action manuelle à faire en fin de journée.
+
+**Acceptance Criteria:**
+
+**Given** il est 16h30 un jour travaillé (L, M, J, V)
+**When** le scheduler s'exécute
+**Then** pour chaque élève :
+  - Si 0 avertissement et 0 sanction aujourd'hui → `reward_type = "full"` (😊)
+  - Si 1-2 avertissements et 0 sanction → `reward_type = "partial"` (🙂)
+  - Si sanction aujourd'hui → pas de récompense créée
+**And** l'attribution est silencieuse (pas de popup)
+
+**Given** c'est mercredi
+**When** 16h30 arrive
+**Then** aucune attribution (jour non travaillé)
+
+**Given** l'application était fermée à 16h30
+**When** je l'ouvre après 16h30 le même jour
+**Then** l'attribution ratée est effectuée au lancement
+
+### Story 7.3: Annulation d'une récompense par sanction
+
+As a enseignant,
+I want qu'une sanction annule la dernière récompense positive de l'élève,
+So that le système reflète l'impact d'un mauvais comportement sur le bilan de la semaine.
+
+**Acceptance Criteria:**
+
+**Given** un élève a des récompenses cette semaine (ex: 😊🙂😊)
+**When** je lui donne une sanction
+**Then** le système cherche la dernière récompense "partial" (🙂)
+**And** la convertit en "cancelled" (🙁)
+
+**Given** un élève n'a que des récompenses "full" (😊😊😊)
+**When** je lui donne une sanction
+**Then** le système convertit la dernière "full" en "cancelled" (🙁)
+
+**Given** un élève n'a aucune récompense cette semaine
+**When** je lui donne une sanction
+**Then** la sanction est ajoutée normalement (pas d'annulation possible)
+
+### Story 7.4: Affichage de la ligne hebdomadaire L-M-J-V
+
+As a enseignant,
+I want voir la ligne de récompenses de la semaine sur chaque carte élève,
+So that je visualise rapidement le bilan comportemental de chacun.
+
+**Acceptance Criteria:**
+
+**Given** on est jeudi
+**When** j'affiche la carte d'un élève
+**Then** je vois uniquement les jours écoulés : [L] [M] (2 cases)
+**And** chaque case affiche l'émoji correspondant : 😊, 🙂, 🙁 ou vide
+
+**Given** un élève a le bilan : Lundi=😊, Mardi=🙂
+**When** j'affiche sa carte
+**Then** je vois : [😊] [🙂]
+
+**Given** c'est lundi matin
+**When** j'affiche la carte
+**Then** la ligne est vide (aucun jour écoulé encore)
+
+### Story 7.5: Reset hebdomadaire des récompenses
+
+As a enseignant,
+I want que les récompenses se réinitialisent chaque lundi,
+So that chaque semaine reparte à zéro comme les sanctions.
+
+**Acceptance Criteria:**
+
+**Given** on passe au lundi (00h00)
+**When** le scheduler s'exécute
+**Then** les récompenses de la semaine précédente sont archivées
+**And** la ligne L-M-J-V est vide pour la nouvelle semaine
+
+**Given** l'application était fermée pendant le weekend
+**When** je l'ouvre le lundi
+**Then** le reset est bien effectué
+
+---
+
+## Epic 8: Refonte Interface en Cartes
+
+L'interface principale passe d'une liste à une grille de cartes fixes pour une meilleure lisibilité sur TBI.
+
+**Contexte:** Les élèves doivent pouvoir voir leur prénom et leur statut sans que l'ordre change quand quelqu'un est sanctionné. L'interface doit s'adapter au nombre d'élèves (18-28) sans scroll.
+
+### Story 8.1: Layout en grille de cartes (remplace la liste)
+
+As a enseignant,
+I want voir mes élèves sous forme de cartes dans une grille,
+So that chaque élève ait une position fixe facilement repérable.
+
+**Acceptance Criteria:**
+
+**Given** j'ai 18 élèves
+**When** j'affiche l'interface
+**Then** les élèves sont affichés en grille (ex: 6×3)
+**And** toutes les cartes sont visibles sans scroll
+**And** l'ordre est alphabétique fixe (A→Z)
+
+**Given** j'ai 28 élèves
+**When** j'affiche l'interface
+**Then** la grille s'adapte (ex: 7×4)
+**And** les cartes sont plus petites mais lisibles
+**And** toujours pas de scroll
+
+**Given** un élève reçoit une sanction
+**When** l'interface se met à jour
+**Then** sa carte reste à la même position (pas de réordonnancement)
+
+### Story 8.2: Contenu de chaque carte élève
+
+As a enseignant,
+I want que chaque carte affiche toutes les informations essentielles,
+So that je n'aie pas besoin de cliquer pour voir le statut.
+
+**Acceptance Criteria:**
+
+**Given** une carte élève
+**When** je la regarde
+**Then** je vois :
+  - Le prénom
+  - Les avertissements du jour (⚠️ ou ⚠️⚠️ à côté du prénom)
+  - La ligne hebdomadaire L-M-J-V avec émojis
+  - Bouton [Avertir]
+  - Bouton [Sanction]
+
+**Given** un élève a 2 avertissements
+**When** je regarde sa carte
+**Then** je vois "Marie ⚠️⚠️" dans l'en-tête
+
+### Story 8.3: Adaptation responsive sans scroll
+
+As a enseignant,
+I want que l'interface s'adapte à la taille de l'écran,
+So that tous les élèves soient toujours visibles sur un écran 16:9.
+
+**Acceptance Criteria:**
+
+**Given** un écran 1920×1080 (Full HD)
+**When** j'affiche 18 élèves
+**Then** la grille utilise tout l'espace disponible
+**And** les cartes sont suffisamment grandes pour être lisibles
+**And** aucun scroll n'est nécessaire
+
+**Given** un écran 1920×1080
+**When** j'affiche 28 élèves
+**Then** la grille s'ajuste (plus de colonnes, cartes plus petites)
+**And** tout reste visible sans scroll
+**And** les boutons restent cliquables (taille minimum)
+
+### Story 8.4: Mode TBI avec le nouveau layout cartes
+
+As a élève,
+I want voir mon prénom et mon statut sur le TBI,
+So that je sache où j'en suis depuis ma place.
+
+**Acceptance Criteria:**
+
+**Given** le mode TBI est activé
+**When** l'affichage plein écran s'affiche
+**Then** la grille de cartes est visible
+**And** les prénoms sont lisibles à 6 mètres
+**And** les émojis (😊🙂🙁⚠️) sont clairement distinguables
+**And** l'ordre alphabétique est conservé
+
+**Given** le mode TBI est actif
+**When** l'enseignant donne un avertissement
+**Then** la carte de l'élève se met à jour instantanément
+**And** sa position ne change pas
+
+---
+
+## Epic 9: Barre Latérale d'Accès Rapide
+
+L'enseignant peut accéder rapidement à la liste des élèves via une barre latérale escamotable.
+
+**Contexte:** Une fine barre sur le bord droit de l'écran permet d'ouvrir/fermer une liste minimaliste pour des actions rapides sans quitter l'application en cours.
+
+### Story 9.1: Barre fine toujours visible sur le bord droit
+
+As a enseignant,
+I want voir une fine barre sur le bord droit de l'écran,
+So that je sache que l'accès rapide est disponible.
+
+**Acceptance Criteria:**
+
+**Given** l'application est lancée
+**When** je regarde le bord droit de l'écran
+**Then** une barre fine (~10-15px) est visible
+**And** elle reste au premier plan (toujours visible)
+**And** elle ne gêne pas les autres applications
+
+**Given** la barre est visible
+**When** je passe ma souris dessus
+**Then** un effet visuel indique qu'elle est cliquable
+
+### Story 9.2: Expansion/collapse au clic
+
+As a enseignant,
+I want ouvrir la liste en cliquant sur la barre,
+So that je puisse accéder aux élèves rapidement.
+
+**Acceptance Criteria:**
+
+**Given** la barre est en mode collapsed (~15px)
+**When** je clique dessus
+**Then** elle s'étend (~250-300px) pour afficher la liste des élèves
+**And** l'animation est fluide (<300ms)
+
+**Given** la barre est en mode expanded
+**When** je clique sur la zone de collapse (ou en dehors)
+**Then** elle revient en mode collapsed
+**And** l'animation est fluide
+
+### Story 9.3: Liste minimaliste dans la barre latérale
+
+As a enseignant,
+I want voir une liste simple des élèves dans la barre,
+So that je puisse agir rapidement sans informations superflues.
+
+**Acceptance Criteria:**
+
+**Given** la barre est ouverte (expanded)
+**When** je regarde le contenu
+**Then** je vois une liste scrollable des élèves
+**And** chaque élève affiche : Prénom + [⚠️] + [🙁]
+**And** PAS de ligne L-M-J-V (trop d'informations)
+
+**Given** la liste d'élèves
+**When** je scroll
+**Then** je peux voir tous les élèves
+**And** le scroll est fluide
+
+### Story 9.4: Actions rapides sans modal
+
+As a enseignant,
+I want avertir ou sanctionner en un seul clic depuis la barre,
+So that l'action soit instantanée.
+
+**Acceptance Criteria:**
+
+**Given** la barre est ouverte
+**When** je clique sur [⚠️] d'un élève
+**Then** l'avertissement est ajouté immédiatement
+**And** aucune modal ne s'affiche
+**And** un feedback visuel confirme l'action
+
+**Given** la barre est ouverte
+**When** je clique sur [🙁] d'un élève
+**Then** la sanction est ajoutée immédiatement
+**And** aucune modal de raison ne s'affiche (mode rapide)
+**And** un feedback visuel confirme l'action
+
+**Given** un élève atteint le 3ème avertissement depuis la barre
+**When** je clique sur [⚠️]
+**Then** la sanction auto est appliquée
+**And** pas de modal (cohérent avec le mode rapide)
+
+### Story 9.5: Synchronisation avec l'interface principale
+
+As a enseignant,
+I want que les actions dans la barre se reflètent dans l'interface principale,
+So that tout reste cohérent.
+
+**Acceptance Criteria:**
+
+**Given** l'interface principale est visible
+**When** j'ajoute un avertissement via la barre latérale
+**Then** la carte de l'élève se met à jour instantanément dans l'interface principale
+
+**Given** je donne une sanction via la barre
+**When** je regarde l'interface principale
+**Then** la ligne L-M-J-V est mise à jour (annulation si applicable)
+**And** le compteur de sanctions est incrémenté
+
+---
+
+## Résumé des nouveaux Epics
+
+| Epic | Titre | Stories | Priorité |
+|------|-------|---------|----------|
+| 7 | Système de Récompenses | 5 | Haute |
+| 8 | Refonte Interface en Cartes | 4 | Haute |
+| 9 | Barre Latérale d'Accès Rapide | 5 | Moyenne |
+
+## Ordre d'implémentation suggéré
+
+1. **Epic 8 - Stories 8.1, 8.2, 8.3** : Refonte UI en cartes (base visuelle)
+2. **Epic 7 - Stories 7.1, 7.2, 7.4** : Système récompenses (DB + auto + affichage)
+3. **Epic 7 - Story 7.3** : Annulation par sanction
+4. **Epic 8 - Story 8.4** : Adaptation TBI
+5. **Epic 7 - Story 7.5** : Reset hebdomadaire
+6. **Epic 9** : Barre latérale (feature indépendante)

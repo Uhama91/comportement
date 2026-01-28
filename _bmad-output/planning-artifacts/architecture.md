@@ -683,3 +683,280 @@ L'architecture est **validée et prête** pour la phase suivante :
 
 **Première story recommandée :** Initialisation projet Tauri + test Windows pro (validation risque critique)
 
+---
+
+## Architecture V2 - Nouvelles Fonctionnalités
+
+_Ajout : 2026-01-28 - Système de Récompenses, Interface Cartes, Barre Latérale_
+
+### Nouveau Schema SQLite
+
+```sql
+-- Table existante (inchangée)
+-- students, warnings, sanctions
+
+-- NOUVELLE TABLE : Récompenses quotidiennes
+CREATE TABLE daily_rewards (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  student_id INTEGER REFERENCES students(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,                    -- Format "YYYY-MM-DD"
+  day_of_week TEXT NOT NULL,             -- "L", "M", "J", "V"
+  reward_type TEXT NOT NULL,             -- "full" (😊), "partial" (🙂), "cancelled" (🙁)
+  had_warnings INTEGER DEFAULT 0,        -- Nombre d'avertissements ce jour
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+  UNIQUE(student_id, date)               -- Un seul reward par élève par jour
+);
+
+-- Index pour requêtes fréquentes
+CREATE INDEX idx_rewards_student ON daily_rewards(student_id);
+CREATE INDEX idx_rewards_date ON daily_rewards(date);
+CREATE INDEX idx_rewards_week ON daily_rewards(date, student_id);
+```
+
+### Nouvelles Commandes IPC
+
+| Commande Tauri | Direction | Description |
+|----------------|-----------|-------------|
+| `get_weekly_rewards` | Rust → React | Récupère les récompenses L-M-J-V de la semaine |
+| `trigger_daily_reward` | Rust (auto) | Attribution automatique à 16h30 |
+| `cancel_reward_for_sanction` | Rust (interne) | Annule la dernière récompense lors d'une sanction |
+| `get_elapsed_days` | Rust → React | Retourne les jours écoulés de la semaine (L, M, J, V) |
+
+### Nouveaux Composants React
+
+```
+src/
+├── components/
+│   ├── StudentGrid/                    # NOUVEAU - Grille de cartes (remplace StudentList)
+│   │   ├── StudentGrid.tsx             # Layout grille adaptive
+│   │   ├── StudentGridCard.tsx         # Carte individuelle avec ligne L-M-J-V
+│   │   └── WeeklyRewardLine.tsx        # Composant ligne 😊🙂🙁
+│   │
+│   ├── Sidebar/                        # NOUVEAU - Barre latérale
+│   │   ├── SidebarTrigger.tsx          # Barre fine cliquable (10-15px)
+│   │   ├── SidebarPanel.tsx            # Panel étendu (~250px)
+│   │   ├── SidebarStudentRow.tsx       # Ligne minimaliste élève
+│   │   └── SidebarWindow.tsx           # Fenêtre Tauri séparée
+│   │
+│   ├── TBIView/                        # MODIFIÉ - Utilise maintenant StudentGrid
+│   │   └── TBIView.tsx                 # Vue plein écran avec grille cartes
+│   │
+│   └── StudentList/                    # DÉPRÉCIÉ - Remplacé par StudentGrid
+```
+
+### Architecture Sidebar (Fenêtre Tauri Séparée)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                          Écran Principal                             │
+│                                                                      │
+│  ┌────────────────────────────────────┐      ┌─────┐                │
+│  │                                    │      │     │ ← Barre fine   │
+│  │         Application principale     │      │  S  │   (collapsed)  │
+│  │         (Grille de cartes)         │      │  I  │                │
+│  │                                    │      │  D  │                │
+│  │                                    │      │  E  │                │
+│  │                                    │      │  B  │                │
+│  │                                    │      │  A  │                │
+│  │                                    │      │  R  │                │
+│  └────────────────────────────────────┘      └─────┘                │
+│                                                                      │
+│  ┌────────────────────────────────────┐  ┌──────────────────────┐   │
+│  │         Application principale     │  │  Panel étendu        │   │
+│  │         (Grille de cartes)         │  │  ┌────────────────┐  │   │
+│  │                                    │  │  │ Marie   [⚠️][🙁]│  │   │
+│  │                                    │  │  │ Lucas   [⚠️][🙁]│  │   │
+│  │                                    │  │  │ Emma    [⚠️][🙁]│  │   │
+│  │                                    │  │  │ ...             │  │   │
+│  │                                    │  │  └────────────────┘  │   │
+│  └────────────────────────────────────┘  └──────────────────────┘   │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+**Configuration Tauri pour sidebar :**
+```json
+{
+  "windows": [
+    {
+      "label": "main",
+      "title": "Comportement",
+      "width": 1200,
+      "height": 800
+    },
+    {
+      "label": "sidebar",
+      "title": "",
+      "width": 15,
+      "height": 600,
+      "x": -1,
+      "y": 100,
+      "decorations": false,
+      "alwaysOnTop": true,
+      "resizable": false,
+      "skipTaskbar": true,
+      "transparent": true
+    }
+  ]
+}
+```
+
+### Store Zustand Mis à Jour
+
+```typescript
+interface StudentStore {
+  // État existant
+  students: Student[];
+  isLoading: boolean;
+  error: string | null;
+
+  // NOUVEAU - Récompenses
+  weeklyRewards: Map<number, DailyReward[]>;  // studentId -> rewards[]
+  elapsedDays: DayOfWeek[];                   // ["L", "M"] si on est mercredi
+
+  // NOUVEAU - Sidebar
+  isSidebarExpanded: boolean;
+
+  // Actions existantes
+  fetchStudents: () => Promise<void>;
+  addWarning: (studentId: number) => Promise<void>;
+  addSanction: (studentId: number, reason?: string) => Promise<void>;
+
+  // NOUVELLES Actions
+  fetchWeeklyRewards: () => Promise<void>;
+  toggleSidebar: () => void;
+
+  // Actions modifiées (pour annulation récompense)
+  addSanction: (studentId: number, reason?: string) => Promise<void>;
+  // → Appelle maintenant cancel_reward_for_sanction en interne
+}
+
+interface DailyReward {
+  id: number;
+  studentId: number;
+  date: string;
+  dayOfWeek: 'L' | 'M' | 'J' | 'V';
+  rewardType: 'full' | 'partial' | 'cancelled';
+}
+```
+
+### Logique Métier - Attribution 16h30
+
+```rust
+// src-tauri/src/scheduler/rewards.rs
+
+async fn attribute_daily_rewards(db: &SqlitePool) {
+    let today = Local::now().date_naive();
+    let day_of_week = match today.weekday() {
+        Weekday::Mon => "L",
+        Weekday::Tue => "M",
+        Weekday::Thu => "J",
+        Weekday::Fri => "V",
+        _ => return, // Mercredi, Samedi, Dimanche = pas d'attribution
+    };
+
+    let students = get_all_students(db).await;
+
+    for student in students {
+        // Vérifier si sanction aujourd'hui
+        let has_sanction_today = check_sanction_today(db, student.id, today).await;
+        if has_sanction_today {
+            continue; // Pas de récompense
+        }
+
+        // Compter les avertissements du jour
+        let warnings_count = get_warnings_count(db, student.id, today).await;
+
+        let reward_type = if warnings_count == 0 {
+            "full"    // 😊
+        } else {
+            "partial" // 🙂
+        };
+
+        insert_daily_reward(db, student.id, today, day_of_week, reward_type, warnings_count).await;
+    }
+}
+```
+
+### Logique Métier - Annulation par Sanction
+
+```rust
+// src-tauri/src/commands/sanctions.rs
+
+async fn add_sanction_with_reward_cancel(
+    db: &SqlitePool,
+    student_id: i64,
+    reason: Option<String>
+) {
+    // 1. Ajouter la sanction
+    insert_sanction(db, student_id, reason).await;
+
+    // 2. Chercher et annuler la dernière récompense positive
+    // Priorité : "partial" (🙂) d'abord, puis "full" (😊)
+    let reward_to_cancel = sqlx::query!(
+        r#"
+        SELECT id, reward_type FROM daily_rewards
+        WHERE student_id = ?
+          AND reward_type IN ('partial', 'full')
+          AND date >= date('now', 'weekday 0', '-7 days')
+        ORDER BY
+          CASE reward_type WHEN 'partial' THEN 0 ELSE 1 END,
+          date DESC
+        LIMIT 1
+        "#,
+        student_id
+    ).fetch_optional(db).await;
+
+    if let Some(reward) = reward_to_cancel {
+        sqlx::query!(
+            "UPDATE daily_rewards SET reward_type = 'cancelled' WHERE id = ?",
+            reward.id
+        ).execute(db).await;
+    }
+}
+```
+
+### Mapping FR V2 → Architecture
+
+| FR | Description | Composant Architecture |
+|----|-------------|------------------------|
+| **Récompenses** |
+| FR35 | Attribution auto 16h30 | `scheduler/rewards.rs` |
+| FR36 | 😊 si aucun problème | `rewards.rs` + `WeeklyRewardLine.tsx` |
+| FR37 | 🙂 si 1-2 avertissements | `rewards.rs` + `WeeklyRewardLine.tsx` |
+| FR38 | Sanction annule récompense | `sanctions.rs` (cancel logic) |
+| FR39 | 4 jours L-M-J-V | `rewards.rs` + `dateUtils.ts` |
+| FR40 | Mercredi exclu | `scheduler/rewards.rs` (guard) |
+| FR41 | Reset lundi | `scheduler/resets.rs` |
+| FR42 | Jours écoulés seulement | `WeeklyRewardLine.tsx` + `elapsedDays` |
+| **Interface Cartes** |
+| FR43 | Grille de cartes | `StudentGrid.tsx` |
+| FR44 | Ordre alphabétique fixe | `sortUtils.ts` (modifié) |
+| FR45 | Position fixe | Store sans tri dynamique |
+| FR46 | Pas de scroll | CSS Grid + viewport units |
+| FR47 | Adaptatif 18-28 élèves | CSS Grid auto-fit |
+| FR48 | Contenu carte complet | `StudentGridCard.tsx` |
+| FR49 | Ligne hebdo visible | `WeeklyRewardLine.tsx` |
+| FR50 | Cartes en TBI aussi | `TBIView.tsx` utilise `StudentGrid` |
+| **Barre Latérale** |
+| FR51 | Barre fine visible | `SidebarTrigger.tsx` + Tauri window |
+| FR52 | Expansion au clic | `SidebarPanel.tsx` + resize window |
+| FR53 | Collapse au clic | `toggleSidebar()` action |
+| FR54 | Liste minimaliste | `SidebarStudentRow.tsx` |
+| FR55 | Pas de ligne hebdo | `SidebarStudentRow.tsx` (simplifié) |
+| FR56 | Bouton avertir | `SidebarStudentRow.tsx` |
+| FR57 | Bouton sanctionner | `SidebarStudentRow.tsx` |
+| FR58 | Actions sans modal | Direct `invoke()` sans UI |
+| FR59 | Synchronisation | Zustand reactivity |
+
+### Couverture V2
+
+| Critère | Résultat |
+|---------|----------|
+| **Coverage FRs V1** | 34/34 ✅ |
+| **Coverage FRs V2** | 25/25 ✅ |
+| **Coverage NFRs V1** | 13/13 ✅ |
+| **Coverage NFRs V2** | 5/5 ✅ |
+| **Total FRs** | 59/59 ✅ |
+| **Total NFRs** | 18/18 ✅ |
+

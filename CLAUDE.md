@@ -35,21 +35,22 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - [x] Architecture : `_bmad-output/planning-artifacts/architecture.md` ✅
 - [x] Epics & Stories : `_bmad-output/planning-artifacts/epics.md` ✅ (6 epics, 25 stories)
 
-### Phase actuelle : TERMINÉE ✅
+### Phase actuelle : V2 en cours
 
-**Tous les Epics implémentés :**
-- ✅ Epic 1 : Gestion Élèves (CRUD, limite 30, édition inline)
-- ✅ Epic 2 : Système Avertissements (1-2-3, reset auto 16h30)
-- ✅ Epic 3 : Système Sanctions (sanction directe, retrait, emoji 🙁)
-- ✅ Epic 4 : Historique & Export (résumé hebdo, export JSON 36 semaines)
-- ✅ Epic 5 : Interface TBI plein écran (F11, grandes polices)
-- ✅ Epic 6 : Intégration Système (tray, Ctrl+Shift+C, autostart)
+**Epics V1 complétés :**
+- ✅ Epic 1-6 : Fonctionnalités de base (CRUD, avertissements, sanctions, export, TBI, tray)
 
-**Fonctionnalités clés :**
-- Sanction directe remet les avertissements à 0
-- 3 avertissements → sanction automatique
-- Boutons séparés : ⚠️ Avertir / 🙁 Sanction
-- Mode TBI avec boutons tactiles par élève
+**Epics V2 (nouveau) :**
+- ✅ Epic 7 : Système Récompenses (7.1-7.4 complétés, 7.5 à faire)
+- ✅ Epic 8 : Refonte Interface Cartes (8.1, 8.2, 8.4 complétés, 8.3 à faire)
+- 🔲 Epic 9 : Barre Latérale (non commencé)
+
+**Fonctionnalités V2 :**
+- Grille de cartes avec ordre alphabétique fixe (ne change jamais)
+- Ligne hebdomadaire L-M-J-V sur chaque carte (pas le mercredi)
+- Récompenses automatiques à 16h30 : 😊 parfait, 🙂 1-2 avert.
+- Sanction annule la récompense la plus récente (partielle d'abord)
+- Table SQLite `daily_rewards` pour persistance
 
 ## Décisions techniques clés
 
@@ -91,3 +92,7 @@ npm test
 | 2026-01-27 | Epic 5 : Mode TBI plein écran (F11) | `TBIView.tsx`, `App.tsx` |
 | 2026-01-27 | Epic 6 : Tray, raccourci global, autostart | `lib.rs`, `Settings.tsx` |
 | 2026-01-27 | Sanction directe + reset avertissements + emoji 🙁 | `studentStore.ts`, composants |
+| 2026-01-28 | Epic 8 : Grille cartes + ordre alphabétique fixe | `StudentGrid/`, `TBIView.tsx` |
+| 2026-01-28 | Epic 7 : Table daily_rewards + store rewards + UI ligne L-M-J-V | `lib.rs`, `studentStore.ts`, `WeeklyRewardLine.tsx` |
+| 2026-01-28 | Attribution auto 16h30 + annulation par sanction | `App.tsx`, `date.ts`, `studentStore.ts` |
+| 2026-01-28 | Sprint 4: Retrait avert. + mode liste + boutons adaptatifs | `StudentGridCard.tsx`, `StudentGrid.tsx`, `useWindowSize.ts` |

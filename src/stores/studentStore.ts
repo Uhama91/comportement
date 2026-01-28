@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
-import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction } from '../types';
-import { getCurrentWeek, shouldResetWarnings, markResetDone } from '../utils/date';
+import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction, DailyReward } from '../types';
+import { getCurrentWeek, shouldResetWarnings, markResetDone, getCurrentWorkDay } from '../utils/date';
 
 interface StudentStore {
   students: StudentWithSanctions[];
@@ -19,6 +19,10 @@ interface StudentStore {
   removeSanction: (studentId: number) => Promise<void>;
   updateSanctionReason: (sanctionId: number, reason: string) => Promise<void>;
   resetAllWarnings: () => Promise<void>;
+
+  // Rewards
+  triggerDailyRewards: () => Promise<void>;
+  getStudentWeeklyRewards: (studentId: number) => DailyReward[];
 
   // Export & History
   getWeeklySummary: (weekNumber?: number, year?: number) => Promise<WeekSummary | null>;
@@ -93,9 +97,39 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
         sanctionsByStudent.get(s.studentId)!.push(s);
       }
 
+      // Load rewards for current week
+      const rewards = await db.select<any[]>(`
+        SELECT
+          id,
+          student_id as studentId,
+          day_of_week as dayOfWeek,
+          week_number as weekNumber,
+          year,
+          reward_type as rewardType,
+          cancelled,
+          cancelled_by_sanction_id as cancelledBySanctionId,
+          created_at as createdAt
+        FROM daily_rewards
+        WHERE week_number = $1 AND year = $2
+        ORDER BY day_of_week ASC
+      `, [week, year]);
+
+      // Map rewards to students
+      const rewardsByStudent = new Map<number, DailyReward[]>();
+      for (const r of rewards) {
+        if (!rewardsByStudent.has(r.studentId)) {
+          rewardsByStudent.set(r.studentId, []);
+        }
+        rewardsByStudent.get(r.studentId)!.push({
+          ...r,
+          cancelled: Boolean(r.cancelled),
+        });
+      }
+
       const studentsWithSanctions: StudentWithSanctions[] = students.map(s => ({
         ...s,
         sanctions: sanctionsByStudent.get(s.id) || [],
+        weeklyRewards: rewardsByStudent.get(s.id) || [],
       }));
 
       set({ students: studentsWithSanctions, isLoading: false });
@@ -227,10 +261,34 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
         [studentId]
       );
 
-      await db.execute(
+      // Insert the sanction
+      const result = await db.execute(
         'INSERT INTO sanctions (student_id, reason, week_number, year) VALUES ($1, $2, $3, $4)',
         [studentId, reason || null, week, year]
       );
+      const sanctionId = result.lastInsertId;
+
+      // Cancel the most recent uncancelled reward (partial first, then full)
+      // Priority: 'partial' rewards are cancelled first
+      const rewardToCancel = await db.select<any[]>(`
+        SELECT id, reward_type as rewardType FROM daily_rewards
+        WHERE student_id = $1
+          AND week_number = $2
+          AND year = $3
+          AND cancelled = 0
+        ORDER BY
+          CASE WHEN reward_type = 'partial' THEN 0 ELSE 1 END,
+          day_of_week DESC
+        LIMIT 1
+      `, [studentId, week, year]);
+
+      if (rewardToCancel.length > 0) {
+        await db.execute(
+          'UPDATE daily_rewards SET cancelled = 1, cancelled_by_sanction_id = $1 WHERE id = $2',
+          [sanctionId, rewardToCancel[0].id]
+        );
+      }
+
       await get().loadStudents();
     } catch (error) {
       console.error('Error adding sanction:', error);
@@ -283,6 +341,69 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
       console.error('Error resetting warnings:', error);
       set({ error: String(error) });
     }
+  },
+
+  triggerDailyRewards: async () => {
+    try {
+      const db = await getDb();
+      const { week, year } = getCurrentWeek();
+      const dayOfWeek = getCurrentWorkDay();
+
+      // Only trigger on work days (1=Mon, 2=Tue, 4=Thu, 5=Fri)
+      if (dayOfWeek === -1) {
+        console.log('Not a work day, skipping daily rewards');
+        return;
+      }
+
+      const { students } = get();
+
+      for (const student of students) {
+        // Check if reward already exists for this day
+        const existing = await db.select<any[]>(`
+          SELECT id FROM daily_rewards
+          WHERE student_id = $1 AND day_of_week = $2 AND week_number = $3 AND year = $4
+        `, [student.id, dayOfWeek, week, year]);
+
+        if (existing.length > 0) {
+          continue; // Already has a reward for today
+        }
+
+        // Check if student had a sanction today
+        const todaySanctions = await db.select<any[]>(`
+          SELECT id FROM sanctions
+          WHERE student_id = $1
+            AND week_number = $2
+            AND year = $3
+            AND DATE(created_at) = DATE('now', 'localtime')
+        `, [student.id, week, year]);
+
+        if (todaySanctions.length > 0) {
+          continue; // No reward if had a sanction today
+        }
+
+        // Determine reward type based on current warnings
+        // 0 warnings = full (😊), 1-2 warnings = partial (🙂)
+        const rewardType = student.warnings === 0 ? 'full' : 'partial';
+
+        await db.execute(
+          `INSERT INTO daily_rewards (student_id, day_of_week, week_number, year, reward_type)
+           VALUES ($1, $2, $3, $4, $5)`,
+          [student.id, dayOfWeek, week, year, rewardType]
+        );
+      }
+
+      await get().loadStudents();
+      console.log('Daily rewards triggered for day', dayOfWeek);
+    } catch (error) {
+      console.error('Error triggering daily rewards:', error);
+      set({ error: String(error) });
+    }
+  },
+
+  getStudentWeeklyRewards: (studentId: number) => {
+    const { students } = get();
+    const student = students.find(s => s.id === studentId);
+    return student?.weeklyRewards || [];
   },
 
   getWeeklySummary: async (weekNumber?: number, year?: number) => {

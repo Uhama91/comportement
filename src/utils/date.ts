@@ -83,3 +83,39 @@ export function shouldResetSanctions(): boolean {
 export function markSanctionResetDone(): void {
   localStorage.setItem('lastSanctionReset', getWeekKey());
 }
+
+/**
+ * Get current work day number (1=Mon, 2=Tue, 4=Thu, 5=Fri)
+ * Returns -1 if not a work day (Wednesday, Saturday, Sunday)
+ */
+export function getCurrentWorkDay(): number {
+  const day = new Date().getDay();
+  // Mapping: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat
+  const workDays: Record<number, number> = {
+    1: 1, // Lundi
+    2: 2, // Mardi
+    4: 4, // Jeudi
+    5: 5, // Vendredi
+  };
+  return workDays[day] ?? -1;
+}
+
+/**
+ * Check if we should trigger daily rewards (past 16:30 and not yet triggered today)
+ */
+export function shouldTriggerRewards(): boolean {
+  if (!isPastDailyReset()) return false;
+  if (getCurrentWorkDay() === -1) return false;
+
+  const todayKey = getResetKey();
+  const lastTriggerKey = localStorage.getItem('lastRewardTrigger');
+
+  return lastTriggerKey !== todayKey;
+}
+
+/**
+ * Mark today's reward trigger as done
+ */
+export function markRewardTriggerDone(): void {
+  localStorage.setItem('lastRewardTrigger', getResetKey());
+}
