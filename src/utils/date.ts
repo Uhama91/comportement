@@ -1,16 +1,26 @@
 /**
  * Get current ISO week number and year
+ * Uses proper ISO 8601 week calculation
  */
 export function getCurrentWeek(): { week: number; year: number } {
   const now = new Date();
-  const year = now.getFullYear();
 
-  // ISO week calculation
-  const jan1 = new Date(year, 0, 1);
-  const dayOfYear = Math.floor((now.getTime() - jan1.getTime()) / 86400000) + 1;
-  const week = Math.ceil((dayOfYear + jan1.getDay()) / 7);
+  // Create a copy to avoid mutating
+  const date = new Date(now.getTime());
 
-  return { week, year };
+  // Set to nearest Thursday: current date + 4 - current day number (makes Sunday day 7)
+  date.setDate(date.getDate() + 4 - (date.getDay() || 7));
+
+  // Get first day of year
+  const yearStart = new Date(date.getFullYear(), 0, 1);
+
+  // Calculate full weeks to nearest Thursday
+  const weekNumber = Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+
+  // The year is the year of the Thursday
+  const year = date.getFullYear();
+
+  return { week: weekNumber, year };
 }
 
 /**

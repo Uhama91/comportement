@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
 import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction, DailyReward } from '../types';
-import { getCurrentWeek, shouldResetWarnings, markResetDone, getCurrentWorkDay } from '../utils/date';
+import { getCurrentWeek, shouldResetWarnings, markResetDone, shouldResetSanctions, markSanctionResetDone, getCurrentWorkDay } from '../utils/date';
 
 interface StudentStore {
   students: StudentWithSanctions[];
@@ -45,6 +45,14 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const db = await getDb();
+
+      // Check for weekly reset on Monday (new week = fresh start)
+      if (shouldResetSanctions()) {
+        // Reset all warnings for the new week
+        await db.execute('UPDATE students SET warnings = 0');
+        markSanctionResetDone();
+        console.log('Nouvelle semaine : avertissements réinitialisés (lundi)');
+      }
 
       // Check for automatic warning reset at 16:30
       if (shouldResetWarnings()) {

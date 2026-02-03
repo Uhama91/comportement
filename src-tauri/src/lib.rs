@@ -4,6 +4,7 @@ use tauri::{
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
+use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -60,6 +61,13 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .plugin(single_instance_init(|app, _args, _cwd| {
+            // When a second instance tries to launch, show the existing window
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(
             tauri_plugin_sql::Builder::default()
                 .add_migrations("sqlite:comportement.db", migrations)
