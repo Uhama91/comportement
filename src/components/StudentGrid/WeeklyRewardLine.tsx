@@ -93,7 +93,7 @@ export function WeeklyRewardLine({ studentId, absences = [], compact = true }: W
         let emoji = '';
         let bgClass = 'bg-slate-100';
         let textClass = 'text-slate-300';
-        let label = workDay.label;
+        let label: string = workDay.label;
 
         if (isAbsent) {
           // Absent day - neutral gray with "A"
