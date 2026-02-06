@@ -11,7 +11,7 @@ interface StudentGridCardProps {
 }
 
 export function StudentGridCard({ student, compact = true }: StudentGridCardProps) {
-  const { addWarning, removeWarning, addSanction, deleteStudent, updateStudent, removeSanction, updateSanctionReason } = useStudentStore();
+  const { addWarning, removeWarning, addSanction, deleteStudent, updateStudent, removeSanction, updateSanctionReason, toggleAbsence } = useStudentStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(student.firstName);
   const [showMenu, setShowMenu] = useState(false);
@@ -72,6 +72,7 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
 
   // Couleur de fond selon le statut
   const getBgColor = () => {
+    if (student.todayAbsent) return 'bg-slate-100 border-slate-300';
     if (student.weekSanctionCount > 0) return 'bg-red-50 border-red-200';
     if (student.warnings > 0) return 'bg-amber-50 border-amber-200';
     return 'bg-white border-slate-200';
@@ -125,6 +126,21 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
             </button>
           )}
 
+          {/* Toggle absent */}
+          <button
+            onClick={() => toggleAbsence(student.id)}
+            className={`
+              ml-1 px-1 py-0.5 rounded text-[9px] font-medium transition-colors flex-shrink-0
+              ${student.todayAbsent
+                ? 'bg-slate-500 text-white hover:bg-slate-600'
+                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+              }
+            `}
+            title={student.todayAbsent ? 'Marquer présent' : 'Marquer absent'}
+          >
+            {student.todayAbsent ? 'ABS' : 'ABS'}
+          </button>
+
           {/* Menu contextuel */}
           <div className="relative ml-1">
             <button
@@ -152,69 +168,72 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
           </div>
         </div>
 
-        {/* Ligne hebdomadaire L-M-J-V (placeholder pour l'instant) */}
-        <div className="mb-1">
-          <WeeklyRewardLine studentId={student.id} compact={compact} />
-        </div>
+        {/* Contenu grisé si absent */}
+        <div className={student.todayAbsent ? 'opacity-40 pointer-events-none' : ''}>
+          {/* Ligne hebdomadaire L-M-J-V */}
+          <div className="mb-1">
+            <WeeklyRewardLine studentId={student.id} absences={student.absences} compact={compact} />
+          </div>
 
-        {/* Sanctions de la semaine */}
-        {student.weekSanctionCount > 0 && (
-          <div className="flex flex-wrap items-center gap-0.5 mb-1">
-            {student.sanctions.map((sanction, i) => (
+          {/* Sanctions de la semaine */}
+          {student.weekSanctionCount > 0 && (
+            <div className="flex flex-wrap items-center gap-0.5 mb-1">
+              {student.sanctions.map((sanction, i) => (
+                <button
+                  key={sanction.id}
+                  onClick={() => handleEditSanction(sanction)}
+                  className={`${compact ? 'text-sm' : 'text-base'} cursor-pointer hover:scale-110 transition-transform ${
+                    sanction.reason ? 'opacity-100' : 'opacity-60'
+                  }`}
+                  title={sanction.reason || `Sanction ${i + 1}`}
+                >
+                  🙁
+                </button>
+              ))}
+              {student.weekSanctionCount >= 10 && (
+                <span className="px-1 py-0.5 bg-red-600 text-white text-[8px] font-bold rounded">
+                  MAX
+                </span>
+              )}
               <button
-                key={sanction.id}
-                onClick={() => handleEditSanction(sanction)}
-                className={`${compact ? 'text-sm' : 'text-base'} cursor-pointer hover:scale-110 transition-transform ${
-                  sanction.reason ? 'opacity-100' : 'opacity-60'
-                }`}
-                title={sanction.reason || `Sanction ${i + 1}`}
+                onClick={() => removeSanction(student.id)}
+                className="px-1 py-0.5 text-[8px] bg-slate-100 text-slate-600 rounded hover:bg-red-100 hover:text-red-600"
+                title="Retirer une sanction"
               >
-                🙁
+                -1
               </button>
-            ))}
-            {student.weekSanctionCount >= 10 && (
-              <span className="px-1 py-0.5 bg-red-600 text-white text-[8px] font-bold rounded">
-                MAX
-              </span>
-            )}
+            </div>
+          )}
+
+          {/* Boutons d'action - taille adaptative */}
+          <div className="flex gap-1 mt-auto">
             <button
-              onClick={() => removeSanction(student.id)}
-              className="px-1 py-0.5 text-[8px] bg-slate-100 text-slate-600 rounded hover:bg-red-100 hover:text-red-600"
-              title="Retirer une sanction"
+              onClick={() => addWarning(student.id)}
+              disabled={student.todayAbsent || (student.warnings >= 2 && student.weekSanctionCount >= 10)}
+              className={`
+                flex-1 rounded font-medium transition-colors
+                bg-amber-100 text-amber-700 hover:bg-amber-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+                ${isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
+              `}
+              title="Avertissement"
             >
-              -1
+              ⚠️
+            </button>
+            <button
+              onClick={handleNewSanction}
+              disabled={student.todayAbsent || student.weekSanctionCount >= 10}
+              className={`
+                flex-1 rounded font-medium transition-colors
+                bg-red-100 text-red-700 hover:bg-red-200
+                disabled:opacity-50 disabled:cursor-not-allowed
+                ${isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
+              `}
+              title="Sanction"
+            >
+              🙁
             </button>
           </div>
-        )}
-
-        {/* Boutons d'action - taille adaptative */}
-        <div className="flex gap-1 mt-auto">
-          <button
-            onClick={() => addWarning(student.id)}
-            disabled={student.warnings >= 2 && student.weekSanctionCount >= 10}
-            className={`
-              flex-1 rounded font-medium transition-colors
-              bg-amber-100 text-amber-700 hover:bg-amber-200
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
-            `}
-            title="Avertissement"
-          >
-            ⚠️
-          </button>
-          <button
-            onClick={handleNewSanction}
-            disabled={student.weekSanctionCount >= 10}
-            className={`
-              flex-1 rounded font-medium transition-colors
-              bg-red-100 text-red-700 hover:bg-red-200
-              disabled:opacity-50 disabled:cursor-not-allowed
-              ${isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
-            `}
-            title="Sanction"
-          >
-            🙁
-          </button>
         </div>
       </div>
 

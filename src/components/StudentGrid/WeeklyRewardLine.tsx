@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { useStudentStore } from '../../stores/studentStore';
-import type { DailyReward } from '../../types';
+import type { DailyReward, Absence } from '../../types';
 
 interface WeeklyRewardLineProps {
   studentId: number;
+  absences?: Absence[];
   compact?: boolean;
 }
 
@@ -50,7 +51,7 @@ function getElapsedDayIndices(): number[] {
   return Array.from({ length: endIndex }, (_, i) => i);
 }
 
-export function WeeklyRewardLine({ studentId, compact = true }: WeeklyRewardLineProps) {
+export function WeeklyRewardLine({ studentId, absences = [], compact = true }: WeeklyRewardLineProps) {
   const getStudentWeeklyRewards = useStudentStore(state => state.getStudentWeeklyRewards);
   const rewards = getStudentWeeklyRewards(studentId);
 
@@ -65,19 +66,41 @@ export function WeeklyRewardLine({ studentId, compact = true }: WeeklyRewardLine
     return map;
   }, [rewards]);
 
+  // Map absences by day of week (from date string)
+  const absentDays = useMemo(() => {
+    const set = new Set<number>();
+    for (const a of absences) {
+      const d = new Date(a.date);
+      const jsDay = d.getDay(); // 0=Sun, 1=Mon...
+      // Map JS day to our day_of_week: 1=Mon, 2=Tue, 4=Thu, 5=Fri
+      const mapping: Record<number, number> = { 1: 1, 2: 2, 4: 4, 5: 5 };
+      if (mapping[jsDay] !== undefined) {
+        set.add(mapping[jsDay]);
+      }
+    }
+    return set;
+  }, [absences]);
+
   return (
     <div className={`flex items-center gap-0.5 ${compact ? 'text-[10px]' : 'text-xs'}`}>
       {WORK_DAYS.map((workDay, index) => {
         const isElapsed = elapsedIndices.includes(index);
         const isToday = index === getCurrentWorkDayIndex();
         const reward = rewardsByDay.get(workDay.day);
+        const isAbsent = absentDays.has(workDay.day);
 
         // Determine what to display
         let emoji = '';
         let bgClass = 'bg-slate-100';
         let textClass = 'text-slate-300';
+        let label = workDay.label;
 
-        if (reward) {
+        if (isAbsent) {
+          // Absent day - neutral gray with "A"
+          bgClass = 'bg-slate-200';
+          textClass = 'text-slate-500 font-bold';
+          label = 'A';
+        } else if (reward) {
           if (reward.cancelled) {
             // Cancelled reward - show strikethrough
             emoji = reward.rewardType === 'full' ? '😊' : '🙂';
@@ -106,9 +129,9 @@ export function WeeklyRewardLine({ studentId, compact = true }: WeeklyRewardLine
               ${textClass}
               ${isToday ? 'ring-1 ring-blue-400' : ''}
             `}
-            title={`${workDay.label}${reward ? ` - ${reward.rewardType === 'full' ? 'Parfait' : '1-2 avert.'}${reward.cancelled ? ' (annulé)' : ''}` : isElapsed ? ' - Sanction' : ''}`}
+            title={`${workDay.label}${isAbsent ? ' - Absent' : reward ? ` - ${reward.rewardType === 'full' ? 'Parfait' : '1-2 avert.'}${reward.cancelled ? ' (annulé)' : ''}` : isElapsed ? ' - Sanction' : ''}`}
           >
-            {emoji || <span className="font-medium">{workDay.label}</span>}
+            {emoji || <span className="font-medium">{label}</span>}
           </div>
         );
       })}

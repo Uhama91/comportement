@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
-import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction, DailyReward } from '../types';
-import { getCurrentWeek, shouldResetWarnings, markResetDone, shouldResetSanctions, markSanctionResetDone, getCurrentWorkDay } from '../utils/date';
+import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction, DailyReward, Absence } from '../types';
+import { getCurrentWeek, shouldResetWarnings, markResetDone, shouldResetSanctions, markSanctionResetDone, getCurrentWorkDay, getResetKey } from '../utils/date';
 
 interface StudentStore {
   students: StudentWithSanctions[];
@@ -19,6 +19,7 @@ interface StudentStore {
   removeSanction: (studentId: number) => Promise<void>;
   updateSanctionReason: (sanctionId: number, reason: string) => Promise<void>;
   resetAllWarnings: () => Promise<void>;
+  toggleAbsence: (studentId: number) => Promise<void>;
 
   // Rewards
   triggerDailyRewards: () => Promise<void>;
@@ -134,11 +135,40 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
         });
       }
 
-      const studentsWithSanctions: StudentWithSanctions[] = students.map(s => ({
-        ...s,
-        sanctions: sanctionsByStudent.get(s.id) || [],
-        weeklyRewards: rewardsByStudent.get(s.id) || [],
-      }));
+      // Load absences for current week
+      const absences = await db.select<any[]>(`
+        SELECT
+          id,
+          student_id as studentId,
+          date,
+          week_number as weekNumber,
+          year
+        FROM absences
+        WHERE week_number = $1 AND year = $2
+        ORDER BY date ASC
+      `, [week, year]);
+
+      // Map absences to students
+      const absencesByStudent = new Map<number, Absence[]>();
+      for (const a of absences) {
+        if (!absencesByStudent.has(a.studentId)) {
+          absencesByStudent.set(a.studentId, []);
+        }
+        absencesByStudent.get(a.studentId)!.push(a);
+      }
+
+      const today = getResetKey(); // YYYY-MM-DD
+
+      const studentsWithSanctions: StudentWithSanctions[] = students.map(s => {
+        const studentAbsences = absencesByStudent.get(s.id) || [];
+        return {
+          ...s,
+          sanctions: sanctionsByStudent.get(s.id) || [],
+          weeklyRewards: rewardsByStudent.get(s.id) || [],
+          absences: studentAbsences,
+          todayAbsent: studentAbsences.some(a => a.date === today),
+        };
+      });
 
       set({ students: studentsWithSanctions, isLoading: false });
     } catch (error) {
@@ -206,11 +236,42 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
     }
   },
 
+  toggleAbsence: async (studentId: number) => {
+    try {
+      const db = await getDb();
+      const { week, year } = getCurrentWeek();
+      const today = getResetKey();
+
+      const { students } = get();
+      const student = students.find(s => s.id === studentId);
+      if (!student) return;
+
+      if (student.todayAbsent) {
+        // Remove absence
+        await db.execute(
+          'DELETE FROM absences WHERE student_id = $1 AND date = $2',
+          [studentId, today]
+        );
+      } else {
+        // Add absence
+        await db.execute(
+          'INSERT OR IGNORE INTO absences (student_id, date, week_number, year) VALUES ($1, $2, $3, $4)',
+          [studentId, today, week, year]
+        );
+      }
+
+      await get().loadStudents();
+    } catch (error) {
+      console.error('Error toggling absence:', error);
+      set({ error: String(error) });
+    }
+  },
+
   addWarning: async (studentId: number) => {
     try {
       const { students } = get();
       const student = students.find(s => s.id === studentId);
-      if (!student || student.warnings >= 3) return;
+      if (!student || student.warnings >= 3 || student.todayAbsent) return;
 
       const db = await getDb();
       const newWarnings = student.warnings + 1;
@@ -260,6 +321,10 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
 
   addSanction: async (studentId: number, reason?: string) => {
     try {
+      const { students } = get();
+      const student = students.find(s => s.id === studentId);
+      if (student?.todayAbsent) return;
+
       const db = await getDb();
       const { week, year } = getCurrentWeek();
 
@@ -366,6 +431,11 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
       const { students } = get();
 
       for (const student of students) {
+        // Skip absent students
+        if (student.todayAbsent) {
+          continue;
+        }
+
         // Check if reward already exists for this day
         const existing = await db.select<any[]>(`
           SELECT id FROM daily_rewards
@@ -456,7 +526,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
     try {
       const db = await getDb();
 
-      // Get all sanctions grouped by week
+      // Get all sanctions grouped by week (for counts)
       const allSanctions = await db.select<any[]>(`
         SELECT
           sa.week_number as weekNumber,
@@ -469,6 +539,45 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
         GROUP BY sa.week_number, sa.year, s.id
         ORDER BY sa.year DESC, sa.week_number DESC
       `);
+
+      // Get individual sanction details (with reasons)
+      const sanctionDetails = await db.select<any[]>(`
+        SELECT
+          sa.id,
+          sa.student_id as studentId,
+          sa.reason,
+          sa.week_number as weekNumber,
+          sa.year,
+          sa.created_at as createdAt
+        FROM sanctions sa
+        ORDER BY sa.created_at ASC
+      `);
+
+      // Index sanction details by student+week
+      const detailsByStudentWeek = new Map<string, { id: number; reason: string | null; createdAt: string }[]>();
+      for (const d of sanctionDetails) {
+        const key = `${d.year}-${d.weekNumber}-${d.studentId}`;
+        if (!detailsByStudentWeek.has(key)) {
+          detailsByStudentWeek.set(key, []);
+        }
+        detailsByStudentWeek.get(key)!.push({ id: d.id, reason: d.reason, createdAt: d.createdAt });
+      }
+
+      // Get absences grouped by student+week
+      const allAbsences = await db.select<any[]>(`
+        SELECT student_id as studentId, date, week_number as weekNumber, year
+        FROM absences
+        ORDER BY date ASC
+      `);
+
+      const absencesByStudentWeek = new Map<string, string[]>();
+      for (const a of allAbsences) {
+        const key = `${a.year}-${a.weekNumber}-${a.studentId}`;
+        if (!absencesByStudentWeek.has(key)) {
+          absencesByStudentWeek.set(key, []);
+        }
+        absencesByStudentWeek.get(key)!.push(a.date);
+      }
 
       // Group by week
       const weekMap = new Map<string, WeekSummary>();
@@ -484,10 +593,13 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
           });
         }
         const summary = weekMap.get(key)!;
+        const detailKey = `${row.year}-${row.weekNumber}-${row.studentId}`;
         summary.students.push({
           id: row.studentId,
           firstName: row.firstName,
           sanctionCount: row.sanctionCount,
+          sanctions: detailsByStudentWeek.get(detailKey) || [],
+          absences: absencesByStudentWeek.get(detailKey) || [],
         });
         summary.totalSanctions += row.sanctionCount;
       }

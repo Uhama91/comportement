@@ -58,6 +58,23 @@ pub fn run() {
             CREATE INDEX IF NOT EXISTS idx_rewards_week ON daily_rewards(week_number, year);",
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 4,
+            description: "create_absences_table",
+            sql: "CREATE TABLE IF NOT EXISTS absences (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                week_number INTEGER NOT NULL,
+                year INTEGER NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
+                UNIQUE(student_id, date)
+            );
+            CREATE INDEX IF NOT EXISTS idx_absences_student ON absences(student_id);
+            CREATE INDEX IF NOT EXISTS idx_absences_date ON absences(date);",
+            kind: MigrationKind::Up,
+        },
     ];
 
     tauri::Builder::default()

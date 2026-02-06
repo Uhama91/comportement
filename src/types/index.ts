@@ -14,6 +14,14 @@ export interface Sanction {
   createdAt: string;
 }
 
+export interface Absence {
+  id: number;
+  studentId: number;
+  date: string;
+  weekNumber: number;
+  year: number;
+}
+
 export type RewardType = 'full' | 'partial';
 
 export interface DailyReward {
@@ -32,6 +40,8 @@ export interface StudentWithSanctions extends Student {
   sanctions: Sanction[];
   weekSanctionCount: number;
   weeklyRewards: DailyReward[];
+  absences: Absence[];
+  todayAbsent: boolean;
 }
 
 export interface WeekSummary {
@@ -41,6 +51,8 @@ export interface WeekSummary {
     id: number;
     firstName: string;
     sanctionCount: number;
+    sanctions?: { id: number; reason: string | null; createdAt: string }[];
+    absences?: string[]; // dates YYYY-MM-DD
   }[];
   totalSanctions: number;
 }
