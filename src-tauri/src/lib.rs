@@ -10,6 +10,13 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let migrations = vec![
+        // Activate foreign keys enforcement
+        Migration {
+            version: 0,
+            description: "enable_foreign_keys",
+            sql: "PRAGMA foreign_keys = ON;",
+            kind: MigrationKind::Up,
+        },
         Migration {
             version: 1,
             description: "create_students_table",
@@ -73,6 +80,95 @@ pub fn run() {
             );
             CREATE INDEX IF NOT EXISTS idx_absences_student ON absences(student_id);
             CREATE INDEX IF NOT EXISTS idx_absences_date ON absences(date);",
+            kind: MigrationKind::Up,
+        },
+        // V2 Migrations
+        Migration {
+            version: 5,
+            description: "create_config_periodes_table",
+            sql: "CREATE TABLE IF NOT EXISTS config_periodes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                annee_scolaire TEXT NOT NULL,
+                type_periode TEXT NOT NULL CHECK(type_periode IN ('trimestre', 'semestre')),
+                numero INTEGER NOT NULL,
+                date_debut DATE NOT NULL,
+                date_fin DATE NOT NULL,
+                nom_affichage TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_periodes_annee ON config_periodes(annee_scolaire);
+            CREATE INDEX IF NOT EXISTS idx_periodes_dates ON config_periodes(date_debut, date_fin);",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 6,
+            description: "create_comportement_detail_table",
+            sql: "CREATE TABLE IF NOT EXISTS comportement_detail (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                date_incident DATE NOT NULL,
+                heure_incident TIME,
+                periode_id INTEGER REFERENCES config_periodes(id),
+                type_evenement TEXT NOT NULL,
+                motif TEXT NOT NULL,
+                description TEXT,
+                intervenant TEXT DEFAULT 'Enseignant',
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_detail_eleve ON comportement_detail(eleve_id);
+            CREATE INDEX IF NOT EXISTS idx_detail_periode ON comportement_detail(periode_id);
+            CREATE INDEX IF NOT EXISTS idx_detail_date ON comportement_detail(date_incident);
+            CREATE INDEX IF NOT EXISTS idx_detail_type ON comportement_detail(type_evenement);",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 7,
+            description: "create_domaines_and_appreciations_tables",
+            sql: "CREATE TABLE IF NOT EXISTS domaines_apprentissage (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nom TEXT NOT NULL UNIQUE,
+                ordre_affichage INTEGER DEFAULT 0,
+                actif INTEGER DEFAULT 1,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE TABLE IF NOT EXISTS appreciations (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                periode_id INTEGER NOT NULL REFERENCES config_periodes(id),
+                domaine_id INTEGER NOT NULL REFERENCES domaines_apprentissage(id),
+                date_evaluation DATE,
+                niveau TEXT CHECK(niveau IN ('maitrise', 'en_cours_acquisition', 'debut')),
+                observations TEXT,
+                texte_dictation TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            );
+            CREATE INDEX IF NOT EXISTS idx_appreciations_eleve ON appreciations(eleve_id);
+            CREATE INDEX IF NOT EXISTS idx_appreciations_periode ON appreciations(periode_id);
+            CREATE INDEX IF NOT EXISTS idx_appreciations_domaine ON appreciations(domaine_id);
+            INSERT OR IGNORE INTO domaines_apprentissage (nom, ordre_affichage) VALUES
+                ('Francais', 1),
+                ('Mathematiques', 2),
+                ('Sciences et Technologies', 3),
+                ('Histoire-Geographie', 4),
+                ('Enseignement Moral et Civique', 5),
+                ('Education Physique et Sportive', 6),
+                ('Arts Plastiques', 7),
+                ('Education Musicale', 8),
+                ('Langues Vivantes', 9);",
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 8,
+            description: "create_models_status_table",
+            sql: "CREATE TABLE IF NOT EXISTS models_status (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                model_name TEXT NOT NULL UNIQUE,
+                file_path TEXT NOT NULL,
+                file_size INTEGER,
+                sha256 TEXT,
+                installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                version TEXT
+            );",
             kind: MigrationKind::Up,
         },
     ];

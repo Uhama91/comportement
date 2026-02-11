@@ -47,7 +47,7 @@ development_status:
   # Epic 10 : Restructuration Modulaire V1 vers V2
   epic-10: in-progress
   10-1-reorganiser-arborescence-modules-shared: done
-  10-2-migrations-sqlite-v2: backlog
+  10-2-migrations-sqlite-v2: done
   10-3-configuration-periodes-scolaires: backlog
   10-4-navigation-entre-modules: backlog
   epic-10-retrospective: optional
