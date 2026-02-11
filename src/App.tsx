@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { StudentGrid } from './components/StudentGrid';
-import { Settings } from './components/Settings';
-import { useStudentStore } from './stores/studentStore';
-import { shouldTriggerRewards, markRewardTriggerDone } from './utils/date';
+import ComportementClasseModule from './modules/comportement-classe';
+import { Settings } from './shared/components/Settings';
+import { useStudentStore } from './shared/stores/studentStore';
+import { shouldTriggerRewards, markRewardTriggerDone } from './shared/utils/date';
 
 function App() {
   const [showSettings, setShowSettings] = useState(false);
@@ -46,7 +46,7 @@ function App() {
       </header>
 
       <main className="flex-1 bg-white rounded-lg shadow p-3 min-h-0 overflow-hidden">
-        <StudentGrid compact />
+        <ComportementClasseModule />
       </main>
 
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}

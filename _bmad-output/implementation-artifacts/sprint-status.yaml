@@ -1,0 +1,125 @@
+# generated: 2026-02-10
+# project: comportement
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created, ready for development
+#   - in-progress: Developer actively working on implementation
+#   - review: Implementation complete, ready for review
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Mark epic as 'in-progress' when starting work on its first story
+# - SM typically creates next story ONLY after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then Dev runs code-review (fresh context, ideally different LLM)
+#
+# SPRINT PLAN:
+# ============
+# Sprint 1: Epic 10 + Epic 11 (Restructuration + Evolutions Module 1)
+# Sprint 2: Epic 13 + Epic 14 (Infrastructure IA + Capture audio)
+# Sprint 3: Epic 12 + Epic 15 (Modules 2 et 3)
+# Sprint 4: Epic 16 + Epic 17 (Gestion modeles + Polish)
+
+generated: "2026-02-10"
+project: comportement
+tracking_system: file-system
+story_location: "_bmad-output/implementation-artifacts"
+
+development_status:
+  # ============================================================
+  # Sprint 1 — Restructuration + Evolutions Module 1
+  # ============================================================
+
+  # Epic 10 : Restructuration Modulaire V1 vers V2
+  epic-10: in-progress
+  10-1-reorganiser-arborescence-modules-shared: done
+  10-2-migrations-sqlite-v2: backlog
+  10-3-configuration-periodes-scolaires: backlog
+  10-4-navigation-entre-modules: backlog
+  epic-10-retrospective: optional
+
+  # Epic 11 : Module 1 Evolutions (Comportement Classe)
+  epic-11: backlog
+  11-1-motif-obligatoire-sanctions: backlog
+  11-2-gestion-absences-consolidee: backlog
+  11-3-export-json-enrichi-v2: backlog
+  epic-11-retrospective: optional
+
+  # ============================================================
+  # Sprint 2 — Infrastructure IA + Capture Audio
+  # ============================================================
+
+  # Epic 13 : Infrastructure IA — Sidecars
+  epic-13: backlog
+  13-1-sidecar-manager-rust: backlog
+  13-2-integration-whisper-server-sidecar: backlog
+  13-3-integration-llama-server-sidecar: backlog
+  13-4-pipeline-sequentiel-on-demand: backlog
+  13-5-watchdog-whisper-server: backlog
+  13-6-validateur-rust-4-couches: backlog
+  epic-13-retrospective: optional
+
+  # Epic 14 : Capture Audio + Transcription
+  epic-14: backlog
+  14-1-integration-tauri-plugin-mic-recorder: backlog
+  14-2-fallback-web-audio-api: backlog
+  14-3-pipeline-audio-complet: backlog
+  14-4-affichage-correction-texte-transcrit: backlog
+  14-5-composant-voice-dictation: backlog
+  epic-14-retrospective: optional
+
+  # ============================================================
+  # Sprint 3 — Modules 2 et 3
+  # ============================================================
+
+  # Epic 12 : Module 2 — Comportement Individuel
+  epic-12: backlog
+  12-1-fiche-individuelle-eleve: backlog
+  12-2-saisie-incidents-detailles: backlog
+  12-3-historique-chronologique-par-eleve: backlog
+  12-4-modification-suppression-incidents: backlog
+  epic-12-retrospective: optional
+
+  # Epic 15 : Module 3 — Domaines d'Apprentissage
+  epic-15: backlog
+  15-1-interface-tableau-domaines-eleves: backlog
+  15-2-pipeline-llm-complet: backlog
+  15-3-affichage-resultat-structure-avant-validation: backlog
+  15-4-saisie-manuelle-alternative: backlog
+  15-5-domaines-apprentissage-parametrables: backlog
+  epic-15-retrospective: optional
+
+  # ============================================================
+  # Sprint 4 — Gestion Modeles + Polish
+  # ============================================================
+
+  # Epic 16 : Gestion des Modeles GGUF
+  epic-16: backlog
+  16-1-detection-premier-lancement-ecran-setup: backlog
+  16-2-telechargement-sequentiel-progression: backlog
+  16-3-verification-sha256-stockage: backlog
+  16-4-installation-usb-alternative: backlog
+  epic-16-retrospective: optional
+
+  # Epic 17 : Polish et Distribution
+  epic-17: backlog
+  17-1-build-cross-platform: backlog
+  17-2-tests-performance-pc-ecole: backlog
+  17-3-mode-portable-exe: backlog
+  17-4-documentation-utilisateur: backlog
+  17-5-validation-accessibilite-tbi: backlog
+  epic-17-retrospective: optional

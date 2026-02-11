@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { useStudentStore } from '../stores/studentStore';
-import type { WeekSummary } from '../types';
-import { getCurrentWeek } from '../utils/date';
+import { useStudentStore } from '../../../shared/stores/studentStore';
+import type { WeekSummary } from '../../../shared/types';
+import { getCurrentWeek } from '../../../shared/utils/date';
 
 export function WeeklySummary() {
   const { getWeeklySummary, getHistory } = useStudentStore();

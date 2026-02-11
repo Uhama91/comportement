@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useStudentStore } from '../../stores/studentStore';
+import { useStudentStore } from '../../../../shared/stores/studentStore';
 import { StudentGridCard } from './StudentGridCard';
-import { AddStudentForm } from '../AddStudentForm';
+import { AddStudentForm } from '../../../../shared/components/AddStudentForm';
 import { WeeklySummary } from '../WeeklySummary';
-import { ExportButton } from '../ExportButton';
-import { useWindowSize, LIST_MODE_THRESHOLD } from '../../hooks/useWindowSize';
+import { ExportButton } from '../../../../shared/components/ExportButton';
+import { useWindowSize, LIST_MODE_THRESHOLD } from '../../../../shared/hooks/useWindowSize';
 
 interface StudentGridProps {
   compact?: boolean; // Mode compact pour fenêtre principale vs TBI

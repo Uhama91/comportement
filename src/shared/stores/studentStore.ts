@@ -65,6 +65,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
       const { week, year } = getCurrentWeek();
 
       // Load students with their current week sanction count
+      // FR22: Tri alphabétique fixe (ne change jamais)
       const students = await db.select<any[]>(`
         SELECT
           s.id,
@@ -77,10 +78,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
           AND sa.week_number = $1
           AND sa.year = $2
         GROUP BY s.id
-        ORDER BY
-          weekSanctionCount DESC,
-          CASE WHEN weekSanctionCount > 0 THEN 0 ELSE 1 END,
-          s.first_name ASC
+        ORDER BY s.first_name ASC
       `, [week, year]);
 
       // Load sanctions for current week with details

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { useStudentStore } from '../../stores/studentStore';
-import type { DailyReward, Absence } from '../../types';
+import { useStudentStore } from '../../../../shared/stores/studentStore';
+import type { DailyReward, Absence } from '../../../../shared/types';
 
 interface WeeklyRewardLineProps {
   studentId: number;

@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import type { StudentWithSanctions, Sanction } from '../../types';
-import { useStudentStore } from '../../stores/studentStore';
-import { SanctionReasonModal } from '../SanctionReasonModal';
+import type { StudentWithSanctions, Sanction } from '../../../../shared/types';
+import { useStudentStore } from '../../../../shared/stores/studentStore';
+import { SanctionReasonModal } from '../../../../shared/components/SanctionReasonModal';
 import { WeeklyRewardLine } from './WeeklyRewardLine';
-import { useWindowSize } from '../../hooks/useWindowSize';
+import { useWindowSize } from '../../../../shared/hooks/useWindowSize';
 
 interface StudentGridCardProps {
   student: StudentWithSanctions;
