@@ -53,6 +53,12 @@ export interface WeekSummary {
     sanctionCount: number;
     sanctions?: { id: number; reason: string | null; createdAt: string }[];
     absences?: string[]; // dates YYYY-MM-DD
+    rewards?: {
+      dayOfWeek: number; // 1=Lundi, 2=Mardi, 4=Jeudi, 5=Vendredi
+      rewardType: 'full' | 'partial';
+      cancelled: boolean;
+      cancelledBy?: string | null; // Motif de la sanction qui a annulé la récompense
+    }[];
   }[];
   totalSanctions: number;
 }

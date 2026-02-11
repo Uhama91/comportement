@@ -583,6 +583,35 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
         absencesByStudentWeek.get(key)!.push(a.date);
       }
 
+      // Get rewards with cancellation info
+      const allRewards = await db.select<any[]>(`
+        SELECT
+          r.student_id as studentId,
+          r.day_of_week as dayOfWeek,
+          r.week_number as weekNumber,
+          r.year,
+          r.reward_type as rewardType,
+          r.cancelled,
+          s.reason as cancelledByReason
+        FROM daily_rewards r
+        LEFT JOIN sanctions s ON r.cancelled_by_sanction_id = s.id
+        ORDER BY r.week_number DESC, r.year DESC, r.day_of_week ASC
+      `);
+
+      const rewardsByStudentWeek = new Map<string, { dayOfWeek: number; rewardType: 'full' | 'partial'; cancelled: boolean; cancelledBy: string | null }[]>();
+      for (const r of allRewards) {
+        const key = `${r.year}-${r.weekNumber}-${r.studentId}`;
+        if (!rewardsByStudentWeek.has(key)) {
+          rewardsByStudentWeek.set(key, []);
+        }
+        rewardsByStudentWeek.get(key)!.push({
+          dayOfWeek: r.dayOfWeek,
+          rewardType: r.rewardType,
+          cancelled: Boolean(r.cancelled),
+          cancelledBy: r.cancelledByReason,
+        });
+      }
+
       // Group by week
       const weekMap = new Map<string, WeekSummary>();
 
@@ -604,6 +633,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
           sanctionCount: row.sanctionCount,
           sanctions: detailsByStudentWeek.get(detailKey) || [],
           absences: absencesByStudentWeek.get(detailKey) || [],
+          rewards: rewardsByStudentWeek.get(detailKey) || [],
         });
         summary.totalSanctions += row.sanctionCount;
       }

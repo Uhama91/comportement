@@ -53,10 +53,10 @@ development_status:
   epic-10-retrospective: optional
 
   # Epic 11 : Module 1 Evolutions (Comportement Classe)
-  epic-11: in-progress
+  epic-11: done
   11-1-motif-obligatoire-sanctions: done
   11-2-gestion-absences-consolidee: done
-  11-3-export-json-enrichi-v2: backlog
+  11-3-export-json-enrichi-v2: done
   epic-11-retrospective: optional
 
   # ============================================================
