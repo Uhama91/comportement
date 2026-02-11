@@ -96,10 +96,10 @@ export function WeeklyRewardLine({ studentId, absences = [], compact = true }: W
         let label: string = workDay.label;
 
         if (isAbsent) {
-          // Absent day - neutral gray with "A"
+          // Absent day - neutral gray with "ABS"
           bgClass = 'bg-slate-200';
-          textClass = 'text-slate-500 font-bold';
-          label = 'A';
+          textClass = 'text-slate-500 font-bold text-[7px]'; // Smaller for 3 letters
+          label = 'ABS';
         } else if (reward) {
           if (reward.cancelled) {
             // Cancelled reward - show strikethrough
