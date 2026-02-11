@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import type { Sanction } from '../types';
 
 interface SanctionReasonModalProps {
@@ -7,7 +7,17 @@ interface SanctionReasonModalProps {
   onConfirm: (reason: string) => void;
   existingSanction?: Sanction | null;
   studentName: string;
+  defaultReason?: string; // Pour pré-sélectionner un motif (ex: "3 avertissements")
 }
+
+const PREDEFINED_REASONS = [
+  'Bavardage',
+  'Insolence',
+  'Violence',
+  'Non-respect des règles',
+  '3 avertissements',
+  'Autre',
+] as const;
 
 export function SanctionReasonModal({
   isOpen,
@@ -15,22 +25,42 @@ export function SanctionReasonModal({
   onConfirm,
   existingSanction,
   studentName,
+  defaultReason,
 }: SanctionReasonModalProps) {
-  const [reason, setReason] = useState('');
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const [selectedReason, setSelectedReason] = useState<string>('');
+  const [customReason, setCustomReason] = useState('');
 
   useEffect(() => {
     if (isOpen) {
-      setReason(existingSanction?.reason || '');
-      setTimeout(() => inputRef.current?.focus(), 100);
+      if (existingSanction?.reason) {
+        // Mode édition : déterminer si c'est un motif prédéfini ou custom
+        const isPredefined = PREDEFINED_REASONS.includes(existingSanction.reason as any);
+        if (isPredefined) {
+          setSelectedReason(existingSanction.reason);
+          setCustomReason('');
+        } else {
+          setSelectedReason('Autre');
+          setCustomReason(existingSanction.reason);
+        }
+      } else if (defaultReason) {
+        // Pré-sélectionner le motif par défaut (ex: "3 avertissements")
+        setSelectedReason(defaultReason);
+        setCustomReason('');
+      } else {
+        // Reset
+        setSelectedReason('');
+        setCustomReason('');
+      }
     }
-  }, [isOpen, existingSanction]);
+  }, [isOpen, existingSanction, defaultReason]);
 
   if (!isOpen) return null;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onConfirm(reason);
+    const finalReason = selectedReason === 'Autre' ? customReason : selectedReason;
+    if (!finalReason) return; // Ne devrait jamais arriver grâce à la validation
+    onConfirm(finalReason);
     onClose();
   };
 
@@ -41,6 +71,10 @@ export function SanctionReasonModal({
   };
 
   const isEditing = !!existingSanction;
+
+  // Validation : bouton activé seulement si un motif est sélectionné
+  // et si "Autre" est sélectionné, le champ custom doit être rempli
+  const isValid = selectedReason && (selectedReason !== 'Autre' || customReason.trim().length > 0);
 
   return (
     <div
@@ -62,20 +96,45 @@ export function SanctionReasonModal({
         </p>
 
         <form onSubmit={handleSubmit}>
-          <textarea
-            ref={inputRef}
-            value={reason}
-            onChange={(e) => setReason(e.target.value)}
-            placeholder="Raison de la sanction (optionnel)..."
-            className="w-full px-4 py-3 border border-slate-300 rounded-lg
-              focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent
-              resize-none"
-            rows={3}
-            maxLength={200}
-          />
-          <p className="text-xs text-slate-400 mt-1 text-right">
-            {reason.length}/200
-          </p>
+          <div className="space-y-2 mb-4">
+            {PREDEFINED_REASONS.map((reasonOption) => (
+              <label
+                key={reasonOption}
+                className="flex items-center gap-3 px-3 py-2 border border-slate-200 rounded-lg
+                  hover:bg-slate-50 cursor-pointer transition-colors"
+              >
+                <input
+                  type="radio"
+                  name="reason"
+                  value={reasonOption}
+                  checked={selectedReason === reasonOption}
+                  onChange={(e) => setSelectedReason(e.target.value)}
+                  className="w-4 h-4 text-red-600 focus:ring-red-500"
+                />
+                <span className="text-slate-700">{reasonOption}</span>
+              </label>
+            ))}
+          </div>
+
+          {/* Champ personnalisé si "Autre" est sélectionné */}
+          {selectedReason === 'Autre' && (
+            <div className="mb-4">
+              <textarea
+                value={customReason}
+                onChange={(e) => setCustomReason(e.target.value)}
+                placeholder="Précisez le motif..."
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg
+                  focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent
+                  resize-none"
+                rows={3}
+                maxLength={200}
+                autoFocus
+              />
+              <p className="text-xs text-slate-400 mt-1 text-right">
+                {customReason.length}/200
+              </p>
+            </div>
+          )}
 
           <div className="flex gap-3 mt-4">
             <button
@@ -88,10 +147,14 @@ export function SanctionReasonModal({
             </button>
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-red-600 text-white font-medium rounded-lg
-                hover:bg-red-700 transition-colors"
+              disabled={!isValid}
+              className={`flex-1 px-4 py-2 font-medium rounded-lg transition-colors
+                ${isValid
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-slate-300 text-slate-500 cursor-not-allowed'
+                }`}
             >
-              {isEditing ? 'Enregistrer' : 'Ajouter'}
+              {isEditing ? 'Enregistrer' : 'Confirmer'}
             </button>
           </div>
         </form>

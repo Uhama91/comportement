@@ -24,6 +24,7 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
   // Modal state
   const [showReasonModal, setShowReasonModal] = useState(false);
   const [editingSanction, setEditingSanction] = useState<Sanction | null>(null);
+  const [defaultReason, setDefaultReason] = useState<string | undefined>(undefined);
 
   const handleDelete = () => {
     if (confirm(`Supprimer ${student.firstName} ?`)) {
@@ -62,12 +63,24 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
   };
 
   // Confirm sanction (new or edit)
+  const handleAddWarning = async () => {
+    const result = await addWarning(student.id);
+    if (result && result.thirdWarning === true) {
+      // 3ème avertissement atteint : afficher la modale avec "3 avertissements" pré-sélectionné
+      setDefaultReason('3 avertissements');
+      setEditingSanction(null);
+      setShowReasonModal(true);
+    }
+  };
+
   const handleConfirmReason = async (reason: string) => {
     if (editingSanction) {
       await updateSanctionReason(editingSanction.id, reason);
     } else {
       await addSanction(student.id, reason || undefined);
     }
+    // Reset defaultReason après confirmation
+    setDefaultReason(undefined);
   };
 
   // Couleur de fond selon le statut
@@ -208,7 +221,7 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
           {/* Boutons d'action - taille adaptative */}
           <div className="flex gap-1 mt-auto">
             <button
-              onClick={() => addWarning(student.id)}
+              onClick={handleAddWarning}
               disabled={student.todayAbsent || (student.warnings >= 2 && student.weekSanctionCount >= 10)}
               className={`
                 flex-1 rounded font-medium transition-colors
@@ -240,10 +253,14 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
       {/* Modal raison sanction */}
       <SanctionReasonModal
         isOpen={showReasonModal}
-        onClose={() => setShowReasonModal(false)}
+        onClose={() => {
+          setShowReasonModal(false);
+          setDefaultReason(undefined);
+        }}
         onConfirm={handleConfirmReason}
         existingSanction={editingSanction}
         studentName={student.firstName}
+        defaultReason={defaultReason}
       />
 
       {/* Click outside to close menu */}

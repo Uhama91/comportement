@@ -13,7 +13,7 @@ interface StudentStore {
   addStudent: (firstName: string) => Promise<boolean>;
   updateStudent: (id: number, firstName: string) => Promise<void>;
   deleteStudent: (id: number) => Promise<void>;
-  addWarning: (studentId: number) => Promise<void>;
+  addWarning: (studentId: number) => Promise<{ thirdWarning: boolean }>;
   removeWarning: (studentId: number) => Promise<void>;
   addSanction: (studentId: number, reason?: string) => Promise<void>;
   removeSanction: (studentId: number) => Promise<void>;
@@ -269,33 +269,39 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
     try {
       const { students } = get();
       const student = students.find(s => s.id === studentId);
-      if (!student || student.warnings >= 3 || student.todayAbsent) return;
+      console.log('[DEBUG] addWarning - student:', student?.firstName, 'warnings:', student?.warnings);
+
+      if (!student || student.warnings >= 3 || student.todayAbsent) {
+        console.log('[DEBUG] addWarning - early return, thirdWarning: false');
+        return { thirdWarning: false };
+      }
 
       const db = await getDb();
       const newWarnings = student.warnings + 1;
+      console.log('[DEBUG] addWarning - newWarnings:', newWarnings);
 
       if (newWarnings === 3) {
-        // 3rd warning converts to sanction
-        const { week, year } = getCurrentWeek();
+        // 3rd warning: reset warnings to 0 but don't add sanction yet
+        // The UI will show the sanction reason modal with "3 avertissements" pre-selected
         await db.execute(
           'UPDATE students SET warnings = 0 WHERE id = $1',
           [studentId]
         );
-        await db.execute(
-          'INSERT INTO sanctions (student_id, reason, week_number, year) VALUES ($1, $2, $3, $4)',
-          [studentId, '3 avertissements', week, year]
-        );
+        // Don't reload yet - let the UI handle it after modal confirmation
+        return { thirdWarning: true };
       } else {
+        console.log('[DEBUG] addWarning - normal warning, thirdWarning: false');
         await db.execute(
           'UPDATE students SET warnings = $1 WHERE id = $2',
           [newWarnings, studentId]
         );
+        await get().loadStudents();
+        return { thirdWarning: false };
       }
-
-      await get().loadStudents();
     } catch (error) {
       console.error('Error adding warning:', error);
       set({ error: String(error) });
+      return { thirdWarning: false };
     }
   },
 
