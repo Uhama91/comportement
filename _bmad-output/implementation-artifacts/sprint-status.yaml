@@ -49,7 +49,7 @@ development_status:
   10-1-reorganiser-arborescence-modules-shared: done
   10-2-migrations-sqlite-v2: done
   10-3-configuration-periodes-scolaires: backlog
-  10-4-navigation-entre-modules: backlog
+  10-4-navigation-entre-modules: done
   epic-10-retrospective: optional
 
   # Epic 11 : Module 1 Evolutions (Comportement Classe)

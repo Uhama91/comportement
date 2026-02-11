@@ -100,6 +100,20 @@ npm run dev
 npm test
 ```
 
+## Stories en attente
+
+### Story 10.3 : Configuration des périodes scolaires (SKIP temporaire)
+**Raison :** Story de taille L (complexe) nécessitant :
+- Store configStore pour gérer les périodes
+- UI complète dans Settings (trimestres/semestres, dates, validation)
+- Sélecteur de période dans barre d'outils
+- Logique de détection automatique période active
+- Pas bloquante pour Epic 10 (navigation modulaire)
+
+**Quand la reprendre :** Début Sprint 3 (avant Modules 2 et 3 qui dépendent des périodes)
+
+---
+
 ## Session Log
 
 | Date | Action | Fichiers |
@@ -121,6 +135,12 @@ npm test
 | 2026-01-28 | Epic 7 : Table daily_rewards + store rewards + UI ligne L-M-J-V | `lib.rs`, `studentStore.ts`, `WeeklyRewardLine.tsx` |
 | 2026-01-28 | Attribution auto 16h30 + annulation par sanction | `App.tsx`, `date.ts`, `studentStore.ts` |
 | 2026-01-28 | Sprint 4: Retrait avert. + mode liste + boutons adaptatifs | `StudentGridCard.tsx`, `StudentGrid.tsx`, `useWindowSize.ts` |
+| 2026-02-10 | Planning V2 complet (Product Brief, PRD, UX, Architecture, Epics, Implementation Readiness) | `_bmad-output/planning-artifacts/*-v2.md` |
+| 2026-02-10 | Résolution 7 issues critiques BMM (IC-1 à IC-7) | Tous docs V2 |
+| 2026-02-10 | Sprint Planning généré (36 stories, 8 epics) | `sprint-status.yaml` |
+| 2026-02-10 | Story 10.1 : Réorganisation modulaire V1→V2 | `src/modules/`, `src/shared/` |
+| 2026-02-10 | Story 10.2 : Migrations SQLite V2 (5 tables, seed data) | `src-tauri/src/lib.rs` |
+| 2026-02-10 | Story 10.3 SKIP (reprendre Sprint 3) | - |
 | 2026-02-10 | Workflow BMM V2 init : tag v1.0, archive V1, recherche technique + Perplexity | `bmm-workflow-status.yaml`, `research/` |
 | 2026-02-10 | Product Brief V2 (6 étapes collaboratives) | `product-brief-comportement-2026-02-10.md` |
 | 2026-02-10 | PRD V2 (57 FRs, 27 NFRs) + UX Design V2 (9 sections) — en parallèle | `prd-v2.md`, `ux-design-v2.md` |
