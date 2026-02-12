@@ -199,6 +199,7 @@ pub fn run() {
             sidecar::commands::start_sidecar,
             sidecar::commands::stop_sidecar,
             sidecar::commands::get_sidecar_status,
+            sidecar::transcription::transcribe_audio,
         ])
         .setup(|app| {
             // Logging in debug mode

@@ -16,8 +16,8 @@ impl SidecarConfig {
             SidecarName::Whisper => SidecarConfig {
                 port: 8081,
                 binary_name: "binaries/whisper-server",
-                healthcheck_url: "http://127.0.0.1:8081/health".to_string(),
-                healthcheck_timeout: Duration::from_secs(10),
+                healthcheck_url: "http://127.0.0.1:8081/".to_string(),
+                healthcheck_timeout: Duration::from_secs(30),
                 healthcheck_interval: Duration::from_millis(500),
                 max_requests: 50,
             },

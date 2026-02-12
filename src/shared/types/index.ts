@@ -69,3 +69,21 @@ export interface ExportData {
   students: Student[];
   weeklyHistory: WeekSummary[];
 }
+
+// IA Sidecar Types
+export interface TranscriptionResult {
+  text: string;
+  duration_ms: number;
+}
+
+export interface SidecarInstanceStatus {
+  running: boolean;
+  port: number | null;
+  request_count: number | null;
+  uptime_secs: number | null;
+}
+
+export interface SidecarStatusResponse {
+  whisper: SidecarInstanceStatus;
+  llama: SidecarInstanceStatus;
+}

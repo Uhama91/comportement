@@ -12,6 +12,11 @@ dist
 dist-ssr
 *.local
 
+# IA sidecar binaries (compiled locally, too large for git)
+src-tauri/binaries/whisper-server-*
+src-tauri/binaries/llama-server-*
+!src-tauri/binaries/.gitkeep
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -41,8 +41,20 @@ pub enum SidecarError {
     #[error("Echec de l'arret du sidecar {0} : {1}")]
     StopFailed(SidecarName, String),
 
+    #[error("Modele IA introuvable : {0}. Lancez le script scripts/setup-whisper.sh pour installer les modeles.")]
+    ModelNotFound(String),
+
+    #[error("Erreur de transcription : {0}")]
+    TranscriptionFailed(String),
+
     #[error("Erreur interne : {0}")]
     Internal(String),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TranscriptionResult {
+    pub text: String,
+    pub duration_ms: u64,
 }
 
 #[derive(Debug, Clone, Serialize)]
