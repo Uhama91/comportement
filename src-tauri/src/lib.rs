@@ -1,11 +1,13 @@
 use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    Manager,
+    Manager, RunEvent,
 };
 use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
+
+mod sidecar;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -174,6 +176,7 @@ pub fn run() {
     ];
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(single_instance_init(|app, _args, _cwd| {
             // When a second instance tries to launch, show the existing window
             if let Some(window) = app.get_webview_window("main") {
@@ -191,6 +194,12 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
+        .manage(sidecar::SidecarManager::new())
+        .invoke_handler(tauri::generate_handler![
+            sidecar::commands::start_sidecar,
+            sidecar::commands::stop_sidecar,
+            sidecar::commands::get_sidecar_status,
+        ])
         .setup(|app| {
             // Logging in debug mode
             if cfg!(debug_assertions) {
@@ -233,6 +242,12 @@ pub fn run() {
 
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            if let RunEvent::ExitRequested { .. } = event {
+                let manager = app_handle.state::<sidecar::SidecarManager>();
+                tauri::async_runtime::block_on(manager.stop_all(app_handle));
+            }
+        });
 }

@@ -157,3 +157,4 @@ npm test
 | 2026-02-12 | Story 11.2 : Gestion absences consolidée (bouton Absent + label ABS) | `WeeklyRewardLine.tsx`, `StudentGridCard.tsx` |
 | 2026-02-12 | Story 11.3 : Export JSON enrichi V2 (rewards + raison annulation) | `studentStore.ts`, `types/index.ts` |
 | 2026-02-12 | **Sprint 1 complété** (6/7 stories - Epic 10: 3/4, Epic 11: 3/3 COMPLET) | `sprint-status.yaml` |
+| 2026-02-12 | Story 13.1 : SidecarManager Rust (start/stop/status, pipeline séquentiel, events, 5 tests) | `src-tauri/src/sidecar/`, `lib.rs`, `Cargo.toml`, `tauri.conf.json`, `capabilities/` |
