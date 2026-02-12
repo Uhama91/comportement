@@ -7,6 +7,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod audio;
 mod sidecar;
 mod validation;
 
@@ -195,8 +196,12 @@ pub fn run() {
             MacosLauncher::LaunchAgent,
             Some(vec!["--minimized"]),
         ))
+        .plugin(tauri_plugin_mic_recorder::init())
         .manage(sidecar::SidecarManager::new())
         .invoke_handler(tauri::generate_handler![
+            audio::commands::start_audio_recording,
+            audio::commands::stop_audio_recording,
+            audio::commands::check_mic_permission,
             sidecar::commands::start_sidecar,
             sidecar::commands::stop_sidecar,
             sidecar::commands::get_sidecar_status,

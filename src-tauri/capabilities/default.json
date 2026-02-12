@@ -20,6 +20,9 @@
     "autostart:allow-enable",
     "autostart:allow-disable",
     "autostart:allow-is-enabled",
+    "mic-recorder:default",
+    "mic-recorder:allow-start-recording",
+    "mic-recorder:allow-stop-recording",
     {
       "identifier": "shell:allow-spawn",
       "allow": [
