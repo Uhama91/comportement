@@ -130,6 +130,10 @@ pub async fn transcribe_audio(
         if text.len() > 80 { &text[..80] } else { &text }
     );
 
+    // ADR-002 / Story 13.4: Auto-stop whisper after task in sequential mode
+    // Frees RAM before user corrects text or triggers structuration
+    state.auto_stop_after_task(&app, SidecarName::Whisper).await;
+
     Ok(TranscriptionResult { text, duration_ms })
 }
 

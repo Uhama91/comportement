@@ -88,6 +88,15 @@ export interface SidecarStatusResponse {
   llama: SidecarInstanceStatus;
 }
 
+// Pipeline Types (Story 13.4)
+export type PipelineMode = 'sequential' | 'concurrent';
+
+export interface PipelineConfig {
+  mode: PipelineMode;
+  total_ram_gb: number;
+  concurrent_available: boolean;
+}
+
 // Structuration LLM Types
 export type NiveauAcquisition = 'maitrise' | 'en_cours_acquisition' | 'debut';
 

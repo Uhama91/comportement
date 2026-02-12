@@ -1,5 +1,5 @@
 use super::manager::SidecarManager;
-use super::types::SidecarName;
+use super::types::{PipelineConfig, PipelineMode, SidecarName};
 
 #[tauri::command]
 pub async fn start_sidecar(
@@ -29,4 +29,22 @@ pub async fn get_sidecar_status(
     state: tauri::State<'_, SidecarManager>,
 ) -> Result<super::types::SidecarStatusResponse, String> {
     Ok(state.get_status().await)
+}
+
+/// Returns the current pipeline configuration (mode, RAM, concurrent availability)
+#[tauri::command]
+pub async fn get_pipeline_config(
+    state: tauri::State<'_, SidecarManager>,
+) -> Result<PipelineConfig, String> {
+    Ok(state.get_pipeline_config().await)
+}
+
+/// Override the pipeline mode (sequential or concurrent)
+#[tauri::command]
+pub async fn set_pipeline_mode(
+    state: tauri::State<'_, SidecarManager>,
+    mode: PipelineMode,
+) -> Result<(), String> {
+    state.set_pipeline_mode(mode).await;
+    Ok(())
 }

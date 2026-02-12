@@ -9,6 +9,30 @@ pub enum SidecarName {
     Llama,
 }
 
+/// Pipeline execution mode (ADR-002)
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PipelineMode {
+    /// One sidecar at a time, auto-stop after task. Safe for 4 GB RAM.
+    Sequential,
+    /// Both sidecars can coexist. Requires >= 8 GB RAM.
+    Concurrent,
+}
+
+impl Default for PipelineMode {
+    fn default() -> Self {
+        PipelineMode::Sequential
+    }
+}
+
+/// Pipeline configuration returned to frontend
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PipelineConfig {
+    pub mode: PipelineMode,
+    pub total_ram_gb: f64,
+    pub concurrent_available: bool,
+}
+
 impl fmt::Display for SidecarName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

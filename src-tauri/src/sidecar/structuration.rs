@@ -220,6 +220,10 @@ pub async fn structure_text(
         student_name
     );
 
+    // ADR-002 / Story 13.4: Auto-stop llama after task in sequential mode
+    // Frees RAM after structuration is complete
+    state.auto_stop_after_task(&app, SidecarName::Llama).await;
+
     Ok(StructurationResult {
         observations: llm_response.observations,
         duration_ms,

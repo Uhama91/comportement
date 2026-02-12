@@ -1,4 +1,4 @@
-use super::config::{build_args, SidecarConfig};
+use super::config::{build_args, detect_pipeline_config, SidecarConfig};
 use super::types::*;
 use log::{error, info, warn};
 use tauri::{AppHandle, Emitter};
@@ -9,6 +9,7 @@ use tokio::time::{sleep, Instant};
 struct SidecarManagerInner {
     whisper: Option<SidecarProcess>,
     llama: Option<SidecarProcess>,
+    pipeline_mode: PipelineMode,
 }
 
 impl SidecarManagerInner {
@@ -47,10 +48,17 @@ pub struct SidecarManager {
 
 impl SidecarManager {
     pub fn new() -> Self {
+        let config = detect_pipeline_config();
+        info!(
+            "Pipeline mode: {:?} (RAM: {:.1} Go, concurrent disponible: {})",
+            config.mode, config.total_ram_gb, config.concurrent_available
+        );
+
         Self {
             inner: Mutex::new(SidecarManagerInner {
                 whisper: None,
                 llama: None,
+                pipeline_mode: config.mode,
             }),
         }
     }
@@ -66,16 +74,18 @@ impl SidecarManager {
         let config = SidecarConfig::for_sidecar(name);
 
         // ADR-002: Sequential mode — stop the OTHER sidecar if running
-        let other_name = SidecarManagerInner::other(name);
-        if inner.get(other_name).is_some() {
-            info!("Pipeline sequentiel: arret de {} avant demarrage de {}", other_name, name);
-            if let Some(process) = inner.take(other_name) {
-                let _ = process.child.kill();
-                let _ = app.emit("sidecar_stopped", SidecarEvent {
-                    name: other_name.to_string(),
-                    reason: Some(format!("Arrete pour demarrer {}", name)),
-                    error: None,
-                });
+        if inner.pipeline_mode == PipelineMode::Sequential {
+            let other_name = SidecarManagerInner::other(name);
+            if inner.get(other_name).is_some() {
+                info!("Pipeline sequentiel: arret de {} avant demarrage de {}", other_name, name);
+                if let Some(process) = inner.take(other_name) {
+                    let _ = process.child.kill();
+                    let _ = app.emit("sidecar_stopped", SidecarEvent {
+                        name: other_name.to_string(),
+                        reason: Some(format!("Arrete pour demarrer {}", name)),
+                        error: None,
+                    });
+                }
             }
         }
 
@@ -257,6 +267,50 @@ impl SidecarManager {
         if let Some(p) = process {
             p.request_count += 1;
         }
+    }
+
+    /// Auto-stop a sidecar after task completion (sequential mode only).
+    /// In concurrent mode, sidecars stay alive for reuse.
+    pub async fn auto_stop_after_task(
+        &self,
+        app: &AppHandle,
+        name: SidecarName,
+    ) {
+        let inner = self.inner.lock().await;
+        if inner.pipeline_mode != PipelineMode::Sequential {
+            return;
+        }
+        drop(inner); // Release lock before calling stop()
+
+        info!("Pipeline sequentiel: arret automatique de {} apres tache", name);
+        if let Err(e) = self.stop(app, name).await {
+            warn!("Echec arret auto de {} : {}", name, e);
+        }
+    }
+
+    /// Check if the pipeline is in sequential mode
+    #[allow(dead_code)] // Available for watchdog (Story 13.5) and future use
+    pub async fn is_sequential(&self) -> bool {
+        let inner = self.inner.lock().await;
+        inner.pipeline_mode == PipelineMode::Sequential
+    }
+
+    /// Get the current pipeline configuration
+    pub async fn get_pipeline_config(&self) -> PipelineConfig {
+        let inner = self.inner.lock().await;
+        let detected = detect_pipeline_config();
+        PipelineConfig {
+            mode: inner.pipeline_mode,
+            total_ram_gb: detected.total_ram_gb,
+            concurrent_available: detected.concurrent_available,
+        }
+    }
+
+    /// Override the pipeline mode (e.g., user preference from settings)
+    pub async fn set_pipeline_mode(&self, mode: PipelineMode) {
+        let mut inner = self.inner.lock().await;
+        info!("Pipeline mode change: {:?} -> {:?}", inner.pipeline_mode, mode);
+        inner.pipeline_mode = mode;
     }
 
     fn instance_status(process: &Option<SidecarProcess>) -> SidecarInstanceStatus {

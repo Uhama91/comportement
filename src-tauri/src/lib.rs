@@ -199,6 +199,8 @@ pub fn run() {
             sidecar::commands::start_sidecar,
             sidecar::commands::stop_sidecar,
             sidecar::commands::get_sidecar_status,
+            sidecar::commands::get_pipeline_config,
+            sidecar::commands::set_pipeline_mode,
             sidecar::transcription::transcribe_audio,
             sidecar::structuration::structure_text,
         ])

@@ -1,4 +1,4 @@
-use super::types::SidecarName;
+use super::types::{PipelineConfig, PipelineMode, SidecarName};
 use std::time::Duration;
 
 pub struct SidecarConfig {
@@ -74,6 +74,76 @@ pub fn build_args(
     }
 }
 
+const CONCURRENT_RAM_THRESHOLD_GB: f64 = 8.0;
+
+/// Detect total system RAM in bytes (platform-specific)
+pub fn detect_total_ram_bytes() -> Option<u64> {
+    #[cfg(target_os = "macos")]
+    {
+        let output = std::process::Command::new("sysctl")
+            .args(["-n", "hw.memsize"])
+            .output()
+            .ok()?;
+        String::from_utf8_lossy(&output.stdout)
+            .trim()
+            .parse()
+            .ok()
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let output = std::process::Command::new("wmic")
+            .args(["ComputerSystem", "get", "TotalPhysicalMemory", "/format:value"])
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&output.stdout);
+        for line in text.lines() {
+            if let Some(val) = line.strip_prefix("TotalPhysicalMemory=") {
+                return val.trim().parse().ok();
+            }
+        }
+        None
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let output = std::process::Command::new("grep")
+            .args(["MemTotal", "/proc/meminfo"])
+            .output()
+            .ok()?;
+        let text = String::from_utf8_lossy(&output.stdout);
+        // Format: "MemTotal:       16384000 kB"
+        let kb: u64 = text
+            .split_whitespace()
+            .nth(1)?
+            .parse()
+            .ok()?;
+        Some(kb * 1024)
+    }
+
+    #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
+    {
+        None
+    }
+}
+
+/// Determine the recommended pipeline mode based on system RAM
+pub fn detect_pipeline_config() -> PipelineConfig {
+    let ram_bytes = detect_total_ram_bytes().unwrap_or(0);
+    let total_ram_gb = ram_bytes as f64 / (1024.0 * 1024.0 * 1024.0);
+    let concurrent_available = total_ram_gb >= CONCURRENT_RAM_THRESHOLD_GB;
+
+    PipelineConfig {
+        mode: if concurrent_available {
+            PipelineMode::Concurrent
+        } else {
+            PipelineMode::Sequential
+        },
+        total_ram_gb,
+        concurrent_available,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -115,5 +185,49 @@ mod tests {
     fn llama_args_omit_grammar_when_none() {
         let args = build_args(SidecarName::Llama, "/path/to/model.gguf", None);
         assert!(!args.contains(&"--grammar-file".to_string()));
+    }
+
+    #[test]
+    fn detect_ram_returns_some_on_supported_platforms() {
+        // Should return Some on macOS/Windows/Linux
+        let ram = detect_total_ram_bytes();
+        if cfg!(any(target_os = "macos", target_os = "windows", target_os = "linux")) {
+            assert!(ram.is_some(), "RAM detection should work on this platform");
+            assert!(ram.unwrap() > 0, "RAM should be > 0");
+        }
+    }
+
+    #[test]
+    fn pipeline_config_defaults_to_sequential_for_low_ram() {
+        // 4 GB system should be sequential
+        let config = PipelineConfig {
+            mode: if 4.0 >= 8.0 { PipelineMode::Concurrent } else { PipelineMode::Sequential },
+            total_ram_gb: 4.0,
+            concurrent_available: false,
+        };
+        assert_eq!(config.mode, PipelineMode::Sequential);
+        assert!(!config.concurrent_available);
+    }
+
+    #[test]
+    fn pipeline_config_allows_concurrent_for_high_ram() {
+        // 16 GB system should allow concurrent
+        let config = PipelineConfig {
+            mode: if 16.0 >= 8.0 { PipelineMode::Concurrent } else { PipelineMode::Sequential },
+            total_ram_gb: 16.0,
+            concurrent_available: true,
+        };
+        assert_eq!(config.mode, PipelineMode::Concurrent);
+        assert!(config.concurrent_available);
+    }
+
+    #[test]
+    fn detect_pipeline_config_returns_valid_config() {
+        let config = detect_pipeline_config();
+        assert!(config.total_ram_gb > 0.0);
+        // If we have enough RAM, concurrent should be available
+        if config.total_ram_gb >= 8.0 {
+            assert!(config.concurrent_available);
+        }
     }
 }
