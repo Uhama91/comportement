@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Description
 
-**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 en cours de planning.
+**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 en implémentation (Sprint 1 complété).
 
 **V1 (en production) :**
 - Système d'avertissements (1-2-3) avec reset quotidien à 16h30
@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## BMM Workflow Status
 
-### Phase actuelle : Phase 3 Solutioning (Implementation Readiness en cours)
+### Phase actuelle : Phase 4 Implementation (Sprint 1 complété)
 
 **Phase 1 — Analysis :**
 - [x] Brainstorming : `suivi-comportement-briefing-complet.md` (via Moltbot)
@@ -52,9 +52,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Phase 3 — Solutioning :**
 - [x] Architecture V2 : `architecture-v2.md` (14 sections, 6 ADRs, 9 migrations SQLite)
 - [x] Epics & Stories V2 : `epics-v2.md` (8 epics 10-17, 35 stories, 4 sprints)
-- [ ] Implementation Readiness : en cours
+- [x] Implementation Readiness : complété (7 issues critiques résolues)
 
-**Phase 4 — Implementation :** Non commencée
+**Phase 4 — Implementation :**
+- [x] **Sprint 1 : Epic 10 + Epic 11** (6/7 stories complétées)
+  - Epic 10 : Restructuration Modulaire V1→V2 (3/4 - Story 10.3 déférée à Sprint 3)
+  - Epic 11 : Module 1 Evolutions (3/3 - COMPLET)
+- [ ] Sprint 2 : Epic 13 + Epic 14 (Infrastructure IA + Capture audio)
+- [ ] Sprint 3 : Epic 12 + Epic 15 (Modules 2 et 3)
+- [ ] Sprint 4 : Epic 16 + Epic 17 (Gestion modèles + Polish)
 
 **Documents V1 archivés dans** `archive-v1/` (tag git v1.0)
 
@@ -145,4 +151,9 @@ npm test
 | 2026-02-10 | Product Brief V2 (6 étapes collaboratives) | `product-brief-comportement-2026-02-10.md` |
 | 2026-02-10 | PRD V2 (57 FRs, 27 NFRs) + UX Design V2 (9 sections) — en parallèle | `prd-v2.md`, `ux-design-v2.md` |
 | 2026-02-10 | Architecture V2 (14 sections, 6 ADRs) + Epics V2 (8 epics, 35 stories) — en parallèle | `architecture-v2.md`, `epics-v2.md` |
-| 2026-02-10 | Implementation Readiness Check — en cours | `implementation-readiness-v2.md` |
+| 2026-02-10 | Implementation Readiness Check complété (7 issues critiques résolues) | `implementation-readiness-v2.md` |
+| 2026-02-12 | Story 10.4 : Navigation entre modules (Sidebar responsive) | `App.tsx`, `Sidebar.tsx`, `ModuleHeader.tsx` |
+| 2026-02-12 | Story 11.1 : Motifs sanctions obligatoires (radio buttons + modal 3e avertissement) | `SanctionReasonModal.tsx`, `StudentGridCard.tsx`, `studentStore.ts` |
+| 2026-02-12 | Story 11.2 : Gestion absences consolidée (bouton Absent + label ABS) | `WeeklyRewardLine.tsx`, `StudentGridCard.tsx` |
+| 2026-02-12 | Story 11.3 : Export JSON enrichi V2 (rewards + raison annulation) | `studentStore.ts`, `types/index.ts` |
+| 2026-02-12 | **Sprint 1 complété** (6/7 stories - Epic 10: 3/4, Epic 11: 3/3 COMPLET) | `sprint-status.yaml` |
