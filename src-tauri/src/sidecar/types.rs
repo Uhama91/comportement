@@ -46,9 +46,11 @@ pub struct SidecarProcess {
     pub child: CommandChild,
     pub port: u16,
     pub request_count: u64,
-    #[allow(dead_code)] // Used by watchdog (Story 13.5)
     pub max_requests: u64,
     pub started_at: std::time::Instant,
+    /// Stored for watchdog restart with same parameters
+    pub model_path: String,
+    pub grammar_path: Option<String>,
 }
 
 #[derive(Debug, thiserror::Error)]

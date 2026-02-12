@@ -195,6 +195,8 @@ impl SidecarManager {
             request_count: 0,
             max_requests: config.max_requests,
             started_at: std::time::Instant::now(),
+            model_path: model_path.clone(),
+            grammar_path: grammar_path.clone(),
         });
 
         let _ = app.emit("sidecar_ready", SidecarEvent {
@@ -257,7 +259,6 @@ impl SidecarManager {
         }
     }
 
-    #[allow(dead_code)] // Used by watchdog (Story 13.5)
     pub async fn increment_request_count(&self, name: SidecarName) {
         let mut inner = self.inner.lock().await;
         let process = match name {
@@ -267,6 +268,99 @@ impl SidecarManager {
         if let Some(p) = process {
             p.request_count += 1;
         }
+    }
+
+    /// Restart a sidecar with its stored startup parameters.
+    /// Emits `sidecar_restarting` event before restart.
+    pub async fn restart(
+        &self,
+        app: &AppHandle,
+        name: SidecarName,
+        reason: &str,
+    ) -> Result<(), SidecarError> {
+        // Read stored params before stopping
+        let (model_path, grammar_path) = {
+            let inner = self.inner.lock().await;
+            match inner.get(name) {
+                Some(p) => (p.model_path.clone(), p.grammar_path.clone()),
+                None => return Err(SidecarError::Internal(
+                    format!("{} n'est pas en cours d'execution, impossible de redemarrer", name)
+                )),
+            }
+        };
+
+        info!("Watchdog: redemarrage de {} ({})", name, reason);
+
+        let _ = app.emit("sidecar_restarting", SidecarEvent {
+            name: name.to_string(),
+            reason: Some(reason.to_string()),
+            error: None,
+        });
+
+        // stop() then start() with same params
+        self.stop(app, name).await?;
+        self.start(app, name, model_path, grammar_path).await
+    }
+
+    /// Watchdog check after a request: healthcheck + preventive restart if threshold reached.
+    /// Returns true if a restart was performed.
+    pub async fn watchdog_post_request(
+        &self,
+        app: &AppHandle,
+        name: SidecarName,
+    ) -> bool {
+        let config = SidecarConfig::for_sidecar(name);
+
+        // Check request count threshold (preventive restart for handle leak)
+        let should_restart = {
+            let inner = self.inner.lock().await;
+            match inner.get(name) {
+                Some(p) => p.max_requests > 0 && p.request_count >= p.max_requests,
+                None => false,
+            }
+        };
+
+        if should_restart {
+            warn!(
+                "Watchdog: seuil de requetes atteint pour {} ({}), redemarrage preventif",
+                name,
+                config.max_requests
+            );
+            if let Err(e) = self.restart(app, name, "Seuil de requetes atteint (redemarrage preventif)").await {
+                error!("Watchdog: echec redemarrage preventif de {}: {}", name, e);
+            }
+            return true;
+        }
+
+        // Post-request healthcheck (3 attempts)
+        let client = match reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(2))
+            .build()
+        {
+            Ok(c) => c,
+            Err(_) => return false,
+        };
+
+        let mut failures = 0;
+        for _ in 0..3 {
+            match client.get(&config.healthcheck_url).send().await {
+                Ok(resp) if resp.status().is_success() => return false, // Healthy
+                _ => {
+                    failures += 1;
+                    sleep(std::time::Duration::from_millis(200)).await;
+                }
+            }
+        }
+
+        if failures >= 3 {
+            warn!("Watchdog: healthcheck echoue 3 fois pour {}, redemarrage", name);
+            if let Err(e) = self.restart(app, name, "Healthcheck echoue 3 fois consecutives").await {
+                error!("Watchdog: echec redemarrage de {}: {}", name, e);
+            }
+            return true;
+        }
+
+        false
     }
 
     /// Auto-stop a sidecar after task completion (sequential mode only).
@@ -289,7 +383,7 @@ impl SidecarManager {
     }
 
     /// Check if the pipeline is in sequential mode
-    #[allow(dead_code)] // Available for watchdog (Story 13.5) and future use
+    #[allow(dead_code)] // Available for future use
     pub async fn is_sequential(&self) -> bool {
         let inner = self.inner.lock().await;
         inner.pipeline_mode == PipelineMode::Sequential

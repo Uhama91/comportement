@@ -1,6 +1,6 @@
 use super::manager::SidecarManager;
 use super::types::{SidecarError, SidecarName, TranscriptionResult};
-use log::info;
+use log::{info, warn};
 use std::path::PathBuf;
 use tauri::Manager;
 use tokio::time::Instant;
@@ -86,12 +86,29 @@ async fn send_inference_request(audio_path: &str) -> Result<String, SidecarError
     Ok(text)
 }
 
+/// Ensure whisper-server is running, starting it if needed.
+async fn ensure_whisper_running(
+    app: &tauri::AppHandle,
+    state: &SidecarManager,
+    model_path_str: &str,
+) -> Result<(), String> {
+    let status = state.get_status().await;
+    if !status.whisper.running {
+        info!("whisper-server non demarre, lancement automatique...");
+        state
+            .start(app, SidecarName::Whisper, model_path_str.to_string(), None)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 /// Transcribe a WAV audio file to French text using whisper-server sidecar.
 ///
-/// - Resolves the model path
-/// - Starts whisper-server if not already running
-/// - Sends the audio to /inference
-/// - Returns the transcription text and duration
+/// Includes watchdog (Story 13.5):
+/// - Empty response detection → restart + retry once
+/// - Post-transcription healthcheck → restart if 3 consecutive failures
+/// - Preventive restart after ~50 requests (Windows handle leak workaround)
 #[tauri::command]
 pub async fn transcribe_audio(
     app: tauri::AppHandle,
@@ -104,22 +121,32 @@ pub async fn transcribe_audio(
     let model_path = resolve_model_path(&app).map_err(|e| e.to_string())?;
     let model_path_str = model_path.to_string_lossy().to_string();
 
-    // Check if whisper is already running, start it if not
-    let status = state.get_status().await;
-    if !status.whisper.running {
-        info!("whisper-server non demarre, lancement automatique...");
-        state
-            .start(&app, SidecarName::Whisper, model_path_str, None)
-            .await
-            .map_err(|e| e.to_string())?;
-    }
+    // Ensure whisper is running
+    ensure_whisper_running(&app, &state, &model_path_str).await?;
 
     // Send audio for transcription
-    let text = send_inference_request(&audio_path)
+    let mut text = send_inference_request(&audio_path)
         .await
         .map_err(|e| e.to_string())?;
 
-    // Increment request count (for watchdog Story 13.5)
+    // Watchdog: empty response detection → restart + retry once
+    if text.is_empty() {
+        warn!("Watchdog: reponse vide de whisper-server, redemarrage et nouvelle tentative");
+        state
+            .restart(&app, SidecarName::Whisper, "Reponse vide")
+            .await
+            .map_err(|e| e.to_string())?;
+
+        text = send_inference_request(&audio_path)
+            .await
+            .map_err(|e| e.to_string())?;
+
+        if text.is_empty() {
+            warn!("Watchdog: reponse vide apres retry, retour au frontend");
+        }
+    }
+
+    // Increment request count
     state.increment_request_count(SidecarName::Whisper).await;
 
     let duration_ms = start.elapsed().as_millis() as u64;
@@ -130,8 +157,13 @@ pub async fn transcribe_audio(
         if text.len() > 80 { &text[..80] } else { &text }
     );
 
+    // Watchdog: post-request healthcheck + preventive restart (before auto-stop)
+    // Only runs if whisper is still alive (concurrent mode or before sequential auto-stop)
+    state
+        .watchdog_post_request(&app, SidecarName::Whisper)
+        .await;
+
     // ADR-002 / Story 13.4: Auto-stop whisper after task in sequential mode
-    // Frees RAM before user corrects text or triggers structuration
     state.auto_stop_after_task(&app, SidecarName::Whisper).await;
 
     Ok(TranscriptionResult { text, duration_ms })
