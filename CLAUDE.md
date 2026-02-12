@@ -159,3 +159,4 @@ npm test
 | 2026-02-12 | **Sprint 1 complété** (6/7 stories - Epic 10: 3/4, Epic 11: 3/3 COMPLET) | `sprint-status.yaml` |
 | 2026-02-12 | Story 13.1 : SidecarManager Rust (start/stop/status, pipeline séquentiel, events, 5 tests) | `src-tauri/src/sidecar/`, `lib.rs`, `Cargo.toml`, `tauri.conf.json`, `capabilities/` |
 | 2026-02-12 | Story 13.2 : whisper-server sidecar (binary compilé, modèle 465Mo, commande transcribe_audio, types TS) | `transcription.rs`, `types.rs`, `config.rs`, `Cargo.toml`, `scripts/setup-whisper.sh` |
+| 2026-02-12 | Story 13.3 : llama-server sidecar (Qwen 2.5 Coder 1.5B, grammaire GBNF, commande structure_text, 4 tests) | `structuration.rs`, `grammars/appreciation.gbnf`, `scripts/setup-llama.sh`, `mod.rs`, `lib.rs` |

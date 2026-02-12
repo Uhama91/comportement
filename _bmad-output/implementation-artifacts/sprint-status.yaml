@@ -64,10 +64,10 @@ development_status:
   # ============================================================
 
   # Epic 13 : Infrastructure IA — Sidecars
-  epic-13: backlog
-  13-1-sidecar-manager-rust: backlog
-  13-2-integration-whisper-server-sidecar: backlog
-  13-3-integration-llama-server-sidecar: backlog
+  epic-13: in-progress
+  13-1-sidecar-manager-rust: done
+  13-2-integration-whisper-server-sidecar: done
+  13-3-integration-llama-server-sidecar: done
   13-4-pipeline-sequentiel-on-demand: backlog
   13-5-watchdog-whisper-server: backlog
   13-6-validateur-rust-4-couches: backlog

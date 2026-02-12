@@ -87,3 +87,17 @@ export interface SidecarStatusResponse {
   whisper: SidecarInstanceStatus;
   llama: SidecarInstanceStatus;
 }
+
+// Structuration LLM Types
+export type NiveauAcquisition = 'maitrise' | 'en_cours_acquisition' | 'debut';
+
+export interface ObservationResult {
+  domaine: string;
+  niveau: NiveauAcquisition;
+  commentaire: string;
+}
+
+export interface StructurationResult {
+  observations: ObservationResult[];
+  duration_ms: number;
+}

@@ -1,0 +1,32 @@
+# Grammaire GBNF pour structuration des observations en appreciations
+# Contraint la sortie LLM au format JSON valide pour la table appreciations
+# Ref: ADR-001 (JSON pas SQL), ADR-002 (pipeline sequentiel)
+
+root ::= "{" ws "\"observations\"" ws ":" ws "[" ws observations ws "]" ws "}"
+
+observations ::= observation ( ws "," ws observation )*
+
+observation ::= "{" ws
+  "\"domaine\"" ws ":" ws domaine ws "," ws
+  "\"niveau\"" ws ":" ws niveau ws "," ws
+  "\"commentaire\"" ws ":" ws string ws
+"}"
+
+domaine ::= "\"Francais\""
+  | "\"Mathematiques\""
+  | "\"Sciences et Technologies\""
+  | "\"Histoire-Geographie\""
+  | "\"Enseignement Moral et Civique\""
+  | "\"Education Physique et Sportive\""
+  | "\"Arts Plastiques\""
+  | "\"Education Musicale\""
+  | "\"Langues Vivantes\""
+
+niveau ::= "\"maitrise\"" | "\"en_cours_acquisition\"" | "\"debut\""
+
+string ::= "\"" chars "\""
+chars ::= char*
+char ::= [^"\\] | "\\" escape
+escape ::= "\"" | "\\" | "/" | "n" | "r" | "t"
+
+ws ::= [ \t\n\r]*
