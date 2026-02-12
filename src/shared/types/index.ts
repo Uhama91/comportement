@@ -110,3 +110,10 @@ export interface StructurationResult {
   observations: ObservationResult[];
   duration_ms: number;
 }
+
+// Validation Layer 4 Result (Story 13.6)
+export interface InsertResult {
+  success: boolean;
+  inserted_ids: number[];
+  count: number;
+}

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Description
 
-**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 en implémentation (Sprint 1 complété).
+**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 en implémentation (Sprint 2 en cours).
 
 **V1 (en production) :**
 - Système d'avertissements (1-2-3) avec reset quotidien à 16h30
@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## BMM Workflow Status
 
-### Phase actuelle : Phase 4 Implementation (Sprint 1 complété)
+### Phase actuelle : Phase 4 Implementation (Sprint 2 en cours)
 
 **Phase 1 — Analysis :**
 - [x] Brainstorming : `suivi-comportement-briefing-complet.md` (via Moltbot)
@@ -58,7 +58,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - [x] **Sprint 1 : Epic 10 + Epic 11** (6/7 stories complétées)
   - Epic 10 : Restructuration Modulaire V1→V2 (3/4 - Story 10.3 déférée à Sprint 3)
   - Epic 11 : Module 1 Evolutions (3/3 - COMPLET)
-- [ ] Sprint 2 : Epic 13 + Epic 14 (Infrastructure IA + Capture audio)
+- [ ] **Sprint 2 : Epic 13 + Epic 14** (6/11 stories — Epic 13 : 6/6 COMPLET, Epic 14 : 0/5)
+  - Epic 13 : Infrastructure IA — Sidecars (6/6 - COMPLET)
+  - Epic 14 : Capture Audio + Transcription (0/5 - non commencé)
 - [ ] Sprint 3 : Epic 12 + Epic 15 (Modules 2 et 3)
 - [ ] Sprint 4 : Epic 16 + Epic 17 (Gestion modèles + Polish)
 
@@ -102,8 +104,14 @@ npm run tauri build
 # Frontend seul (sans Tauri)
 npm run dev
 
-# Tests
+# Tests frontend
 npm test
+
+# Tests Rust (sidecar, pipeline, watchdog)
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# TypeScript type check
+npx tsc --noEmit
 ```
 
 ## Stories en attente
@@ -162,3 +170,5 @@ npm test
 | 2026-02-12 | Story 13.3 : llama-server sidecar (Qwen 2.5 Coder 1.5B, grammaire GBNF, commande structure_text, 4 tests) | `structuration.rs`, `grammars/appreciation.gbnf`, `scripts/setup-llama.sh`, `mod.rs`, `lib.rs` |
 | 2026-02-12 | Story 13.4 : Pipeline séquentiel on-demand (auto-stop, détection RAM, mode concurrent optionnel, 5 tests) | `manager.rs`, `config.rs`, `types.rs`, `commands.rs`, `transcription.rs`, `structuration.rs`, `lib.rs` |
 | 2026-02-12 | Story 13.5 : Watchdog whisper-server (réponse vide→retry, healthcheck 3x, restart préventif 50 req) | `manager.rs`, `transcription.rs`, `types.rs` |
+| 2026-02-12 | Story 13.6 : Validateur Rust 4 couches (Layer 3 whitelist + Layer 4 prepared statements, 14 tests) | `validation/mod.rs`, `schema.rs`, `validator.rs`, `executor.rs`, `lib.rs`, `types/index.ts` |
+| 2026-02-12 | **Epic 13 COMPLET** (6/6 stories) — Sprint 2 : Epic 13 done, Epic 14 reste | `sprint-status.yaml` |

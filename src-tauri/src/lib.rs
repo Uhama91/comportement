@@ -8,6 +8,7 @@ use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod sidecar;
+mod validation;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -203,6 +204,7 @@ pub fn run() {
             sidecar::commands::set_pipeline_mode,
             sidecar::transcription::transcribe_audio,
             sidecar::structuration::structure_text,
+            validation::validate_and_insert_observations,
         ])
         .setup(|app| {
             // Logging in debug mode

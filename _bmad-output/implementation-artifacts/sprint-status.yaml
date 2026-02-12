@@ -64,13 +64,13 @@ development_status:
   # ============================================================
 
   # Epic 13 : Infrastructure IA — Sidecars
-  epic-13: in-progress
+  epic-13: done
   13-1-sidecar-manager-rust: done
   13-2-integration-whisper-server-sidecar: done
   13-3-integration-llama-server-sidecar: done
-  13-4-pipeline-sequentiel-on-demand: backlog
-  13-5-watchdog-whisper-server: backlog
-  13-6-validateur-rust-4-couches: backlog
+  13-4-pipeline-sequentiel-on-demand: done
+  13-5-watchdog-whisper-server: done
+  13-6-validateur-rust-4-couches: done
   epic-13-retrospective: optional
 
   # Epic 14 : Capture Audio + Transcription
