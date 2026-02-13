@@ -199,9 +199,7 @@ pub fn run() {
         .plugin(tauri_plugin_mic_recorder::init())
         .manage(sidecar::SidecarManager::new())
         .invoke_handler(tauri::generate_handler![
-            audio::commands::start_audio_recording,
-            audio::commands::stop_audio_recording,
-            audio::commands::check_mic_permission,
+            audio::commands::save_wav_file,
             sidecar::commands::start_sidecar,
             sidecar::commands::stop_sidecar,
             sidecar::commands::get_sidecar_status,

@@ -173,3 +173,4 @@ npx tsc --noEmit
 | 2026-02-12 | Story 13.6 : Validateur Rust 4 couches (Layer 3 whitelist + Layer 4 prepared statements, 14 tests) | `validation/mod.rs`, `schema.rs`, `validator.rs`, `executor.rs`, `lib.rs`, `types/index.ts` |
 | 2026-02-12 | **Epic 13 COMPLET** (6/6 stories) — Sprint 2 : Epic 13 done, Epic 14 reste | `sprint-status.yaml` |
 | 2026-02-12 | Story 14.1 : Integration tauri-plugin-mic-recorder (package npm `tauri-plugin-mic-recorder-api`, hook useAudioRecorder, permissions, test component) | `Cargo.toml`, `package.json`, `capabilities/default.json`, `audio/mod.rs`, `useAudioRecorder.ts`, `AudioRecorderTest.tsx` |
+| 2026-02-12 | Story 14.2 : Fallback Web Audio API (getUserMedia, resample 16kHz, WAV builder, bascule auto Plan A→B, commande Rust save_wav_file) | `webAudioRecorder.ts`, `useAudioRecorder.ts`, `audio/mod.rs`, `lib.rs`, `AudioRecorderTest.tsx` |

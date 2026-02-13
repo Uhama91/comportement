@@ -1,41 +1,66 @@
-// Audio capture module using tauri-plugin-mic-recorder
-// WAV PCM 16-bit, 16kHz, mono format for Whisper.cpp compatibility
+// Audio capture module for Whisper.cpp transcription pipeline
 //
-// The plugin handles:
-// - Audio capture from system default microphone
-// - WAV file generation in temp directory
-// - Automatic permission request on first use
+// Plan A: tauri-plugin-mic-recorder (Rust-native, WAV direct)
+// Plan B: Web Audio API fallback (frontend capture → Rust save)
 //
-// Audio format is configured in the plugin's Rust source
-// Default format should be compatible with Whisper.cpp (16kHz, 16-bit, mono)
+// Both plans produce WAV PCM 16-bit, 16kHz, mono files
+// compatible with whisper-server /inference endpoint.
 
-/// Audio recording commands exposed to frontend
 pub mod commands {
     use log::info;
+    use std::io::Write;
+    use tauri::Manager;
 
-    /// Start audio recording
-    /// Returns success/error, actual recording is handled by the plugin
+    /// Save raw WAV bytes (captured by Web Audio API fallback) to a temp file.
+    /// Returns the absolute path to the saved WAV file.
+    ///
+    /// Used by Plan B when tauri-plugin-mic-recorder fails.
+    /// The frontend captures audio via getUserMedia, resamples to 16kHz mono,
+    /// builds the WAV header+data, and sends the complete bytes here.
     #[tauri::command]
-    pub async fn start_audio_recording(_app: tauri::AppHandle) -> Result<(), String> {
-        info!("Starting audio recording via tauri-plugin-mic-recorder");
-        // The plugin handles permission request automatically on first use
-        Ok(())
-    }
+    pub async fn save_wav_file(
+        app: tauri::AppHandle,
+        wav_data: Vec<u8>,
+    ) -> Result<String, String> {
+        info!(
+            "Saving WAV file from Web Audio fallback ({} bytes)",
+            wav_data.len()
+        );
 
-    /// Stop audio recording and return the path to the WAV file
-    #[tauri::command]
-    pub async fn stop_audio_recording(_app: tauri::AppHandle) -> Result<String, String> {
-        info!("Stopping audio recording");
-        // Plugin will return the temp file path
-        // For now, return a placeholder - the plugin handles this via its own API
-        Ok(String::new())
-    }
+        if wav_data.len() < 44 {
+            return Err("Données WAV invalides (trop petit)".to_string());
+        }
 
-    /// Check if microphone permission is granted
-    #[tauri::command]
-    pub async fn check_mic_permission() -> Result<bool, String> {
-        // On first call, browser/OS will prompt for permission
-        // This is a placeholder - actual permission check is handled by the plugin
-        Ok(true)
+        // Validate WAV header magic bytes
+        if &wav_data[0..4] != b"RIFF" || &wav_data[8..12] != b"WAVE" {
+            return Err("Format WAV invalide (header incorrect)".to_string());
+        }
+
+        let data_dir = app
+            .path()
+            .app_data_dir()
+            .map_err(|e| format!("Impossible de trouver app_data_dir: {}", e))?;
+
+        let audio_dir = data_dir.join("audio_temp");
+        std::fs::create_dir_all(&audio_dir)
+            .map_err(|e| format!("Impossible de créer le répertoire audio_temp: {}", e))?;
+
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+
+        let file_path = audio_dir.join(format!("recording_{}.wav", timestamp));
+
+        let mut file = std::fs::File::create(&file_path)
+            .map_err(|e| format!("Impossible de créer le fichier WAV: {}", e))?;
+
+        file.write_all(&wav_data)
+            .map_err(|e| format!("Impossible d'écrire le fichier WAV: {}", e))?;
+
+        let path_str = file_path.to_string_lossy().to_string();
+        info!("WAV file saved: {}", path_str);
+
+        Ok(path_str)
     }
 }

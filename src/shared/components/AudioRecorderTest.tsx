@@ -1,10 +1,10 @@
-// Test component for audio recording (Story 14.1)
-// Minimal UI to test tauri-plugin-mic-recorder integration
+// Test component for audio recording (Stories 14.1 + 14.2)
+// Tests both Plan A (plugin) and Plan B (Web Audio API fallback)
 
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 
 export function AudioRecorderTest() {
-  const { state, audioPath, duration, error, startRecording, stopRecording, clearError } =
+  const { state, audioPath, duration, error, activePlan, startRecording, stopRecording, clearError } =
     useAudioRecorder();
 
   const formatDuration = (seconds: number) => {
@@ -19,8 +19,14 @@ export function AudioRecorderTest() {
 
       <div className="space-y-4">
         {/* Status */}
-        <div className="text-sm text-slate-600">
-          Status: <span className="font-semibold">{state}</span>
+        <div className="text-sm text-slate-600 space-y-1">
+          <div>Status: <span className="font-semibold">{state}</span></div>
+          <div>
+            Plan:{' '}
+            <span className={`font-semibold ${activePlan === 'web-audio' ? 'text-amber-600' : 'text-blue-600'}`}>
+              {activePlan === 'unknown' ? 'non détecté' : activePlan === 'plugin' ? 'A (plugin)' : 'B (Web Audio)'}
+            </span>
+          </div>
         </div>
 
         {/* Duration counter */}
