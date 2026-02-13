@@ -58,9 +58,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - [x] **Sprint 1 : Epic 10 + Epic 11** (6/7 stories complétées)
   - Epic 10 : Restructuration Modulaire V1→V2 (3/4 - Story 10.3 déférée à Sprint 3)
   - Epic 11 : Module 1 Evolutions (3/3 - COMPLET)
-- [ ] **Sprint 2 : Epic 13 + Epic 14** (6/11 stories — Epic 13 : 6/6 COMPLET, Epic 14 : 0/5)
+- [ ] **Sprint 2 : Epic 13 + Epic 14** (8/11 stories — Epic 13 : 6/6 COMPLET, Epic 14 : 2/5)
   - Epic 13 : Infrastructure IA — Sidecars (6/6 - COMPLET)
-  - Epic 14 : Capture Audio + Transcription (0/5 - non commencé)
+  - Epic 14 : Capture Audio + Transcription (2/5 - Stories 14.1 + 14.2 done)
 - [ ] Sprint 3 : Epic 12 + Epic 15 (Modules 2 et 3)
 - [ ] Sprint 4 : Epic 16 + Epic 17 (Gestion modèles + Polish)
 

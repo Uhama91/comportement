@@ -74,9 +74,9 @@ development_status:
   epic-13-retrospective: optional
 
   # Epic 14 : Capture Audio + Transcription
-  epic-14: backlog
-  14-1-integration-tauri-plugin-mic-recorder: backlog
-  14-2-fallback-web-audio-api: backlog
+  epic-14: in-progress
+  14-1-integration-tauri-plugin-mic-recorder: done
+  14-2-fallback-web-audio-api: done
   14-3-pipeline-audio-complet: backlog
   14-4-affichage-correction-texte-transcrit: backlog
   14-5-composant-voice-dictation: backlog
