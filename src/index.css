@@ -11,3 +11,55 @@ body {
   min-width: 320px;
   min-height: 100vh;
 }
+
+/* Story 14.3 — VoiceDictation animations */
+
+/* Pulse red ring for recording state */
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.animate-pulse-red {
+  animation: pulse-red 1s ease-out infinite;
+}
+
+/* Indeterminate progress bar */
+@keyframes progress-indeterminate {
+  0% {
+    width: 30%;
+    transform: translateX(-100%);
+  }
+  50% {
+    width: 50%;
+  }
+  100% {
+    width: 30%;
+    transform: translateX(350%);
+  }
+}
+
+.animate-progress-indeterminate {
+  animation: progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse-red {
+    animation: none;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.4);
+  }
+  .animate-progress-indeterminate {
+    animation: none;
+    width: 100% !important;
+    transform: none !important;
+    opacity: 0.6;
+  }
+}

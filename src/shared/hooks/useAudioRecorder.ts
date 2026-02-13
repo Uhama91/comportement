@@ -18,6 +18,7 @@ interface UseAudioRecorderReturn {
   state: RecordingState;
   audioPath: string | null;
   duration: number;
+  audioLevel: number;
   error: string | null;
   activePlan: AudioPlan;
   startRecording: () => Promise<void>;
@@ -32,6 +33,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const [state, setState] = useState<RecordingState>('idle');
   const [audioPath, setAudioPath] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
+  const [audioLevel, setAudioLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [activePlan, setActivePlan] = useState<AudioPlan>(detectedPlan);
 
@@ -61,6 +63,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     setState('recording');
     setError(null);
     setAudioPath(null);
+    setAudioLevel(0);
 
     // Try Plan A first if we haven't detected yet
     if (detectedPlan === 'unknown' || detectedPlan === 'plugin') {
@@ -86,7 +89,9 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
 
     // Plan B: Web Audio API
     try {
-      const session = await startWebAudioRecording();
+      const session = await startWebAudioRecording({
+        onAudioLevel: setAudioLevel,
+      });
       webSessionRef.current = session;
       detectedPlan = 'web-audio';
       setActivePlan('web-audio');
@@ -106,6 +111,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
   const stopRecording = useCallback(async (): Promise<string | null> => {
     setState('processing');
     stopDurationCounter();
+    setAudioLevel(0);
 
     try {
       let filePath: string;
@@ -154,6 +160,7 @@ export function useAudioRecorder(): UseAudioRecorderReturn {
     state,
     audioPath,
     duration,
+    audioLevel,
     error,
     activePlan,
     startRecording,

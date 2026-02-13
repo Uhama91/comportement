@@ -10,13 +10,19 @@ export interface WebAudioSession {
   stop: () => Promise<Uint8Array>;
 }
 
+export interface WebAudioRecordingOptions {
+  onAudioLevel?: (level: number) => void;
+}
+
 /**
  * Start recording audio using the Web Audio API.
  * Returns a session object with a stop() method that resolves to WAV bytes.
  *
  * @throws Error if no microphone is available or permission denied
  */
-export async function startWebAudioRecording(): Promise<WebAudioSession> {
+export async function startWebAudioRecording(
+  options?: WebAudioRecordingOptions,
+): Promise<WebAudioSession> {
   let stream: MediaStream;
 
   try {
@@ -53,6 +59,18 @@ export async function startWebAudioRecording(): Promise<WebAudioSession> {
   processor.onaudioprocess = (event) => {
     const inputData = event.inputBuffer.getChannelData(0);
     chunks.push(new Float32Array(inputData));
+
+    // Compute RMS audio level (0-1) for VU meter
+    if (options?.onAudioLevel) {
+      let sum = 0;
+      for (let i = 0; i < inputData.length; i++) {
+        sum += inputData[i] * inputData[i];
+      }
+      const rms = Math.sqrt(sum / inputData.length);
+      // Amplify for better visual range (RMS of speech is typically 0.01-0.1)
+      const level = Math.min(1, rms * 5);
+      options.onAudioLevel(level);
+    }
   };
 
   source.connect(processor);
