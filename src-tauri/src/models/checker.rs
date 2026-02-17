@@ -32,6 +32,10 @@ pub async fn check_models_status(app: tauri::AppHandle) -> Result<ModelsCheckRes
     let whisper_path = models_dir.join(WHISPER_MODEL);
     let llama_path = models_dir.join(QWEN_MODEL);
 
+    log::info!("Models dir: {:?}", models_dir);
+    log::info!("Whisper path: {:?} exists={}", whisper_path, whisper_path.exists());
+    log::info!("Llama path: {:?} exists={}", llama_path, llama_path.exists());
+
     let whisper_installed = whisper_path.exists();
     let llama_installed = llama_path.exists();
 

@@ -99,6 +99,7 @@ async fn ensure_whisper_running(
             .start(app, SidecarName::Whisper, model_path_str.to_string(), None)
             .await
             .map_err(|e| e.to_string())?;
+        info!("whisper-server demarre avec succes");
     }
     Ok(())
 }

@@ -26,8 +26,8 @@
     {
       "identifier": "shell:allow-spawn",
       "allow": [
-        { "name": "binaries/whisper-server", "sidecar": true, "args": true },
-        { "name": "binaries/llama-server", "sidecar": true, "args": true }
+        { "name": "whisper-server", "sidecar": true, "args": true },
+        { "name": "llama-server", "sidecar": true, "args": true }
       ]
     },
     "shell:allow-kill",

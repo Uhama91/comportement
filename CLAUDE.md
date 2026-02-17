@@ -199,3 +199,4 @@ npx tsc --noEmit
 | 2026-02-17 | Epic 16 : Gestion modeles GGUF (detection, download, SHA256, USB install) | `models/checker.rs`, `downloader.rs`, `verifier.rs`, `installer.rs`, `ModelSetupWizard.tsx`, `DownloadProgress.tsx`, `UsbInstall.tsx`, `modelStore.ts` |
 | 2026-02-17 | Epic 17 : Polish (HelpSection, accessibilite TBI via useFullscreen hook, build config) | `HelpSection.tsx`, `useFullscreen.ts`, `Settings.tsx`, `StudentGridCard.tsx`, `StudentGrid.tsx` |
 | 2026-02-17 | **Sprint 4 complété** (8/9 stories code, 17.2=validation terrain) | Build OK: 305KB JS, 32KB CSS, 32 Rust tests |
+| 2026-02-17 | Fix dictée vocale : permission micro macOS, sidecar name resolution, retrait --vad | `Info.plist`, `Entitlements.plist`, `tauri.conf.json`, `config.rs`, `capabilities/default.json` |

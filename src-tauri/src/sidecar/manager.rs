@@ -105,6 +105,7 @@ impl SidecarManager {
             Ok(cmd) => cmd,
             Err(e) => {
                 let err_str = e.to_string();
+                error!("shell.sidecar echec pour {:?}: {}", config.binary_name, err_str);
                 if err_str.contains("not found") || err_str.contains("No such file") || err_str.contains("doesn't exist") {
                     return Err(SidecarError::BinaryNotFound(
                         config.binary_name.to_string(),

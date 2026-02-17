@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useTranscription } from '../../../shared/hooks/useTranscription';
 
 interface InlineDictationProps {
@@ -10,6 +10,8 @@ export function InlineDictation({ onTranscriptionComplete, disabled }: InlineDic
   const { state, text, error, startRecording, stopAndTranscribe, retry, clearError } = useTranscription();
   const callbackRef = useRef(onTranscriptionComplete);
   callbackRef.current = onTranscriptionComplete;
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   // When transcription completes, pass text to parent and reset
   useEffect(() => {
@@ -19,42 +21,36 @@ export function InlineDictation({ onTranscriptionComplete, disabled }: InlineDic
     }
   }, [state, text, retry]);
 
-  const handlePointerDown = async () => {
-    if (disabled || state === 'processing') return;
-    if (state === 'error') clearError();
+  // Use refs for handlers so the same DOM element handles both down and up
+  const handlePointerDown = useCallback(async () => {
+    if (disabled) return;
+    const s = stateRef.current;
+    if (s === 'processing') return;
+    if (s === 'error') clearError();
     await startRecording();
-  };
+  }, [disabled, startRecording, clearError]);
 
-  const handlePointerUp = async () => {
-    if (state !== 'recording') return;
+  const handlePointerUp = useCallback(async () => {
+    if (stateRef.current !== 'recording') return;
     await stopAndTranscribe();
-  };
+  }, [stopAndTranscribe]);
 
-  if (state === 'recording') {
-    return (
-      <button
-        onPointerUp={handlePointerUp}
-        className="flex items-center gap-1 px-2 py-1 text-xs bg-red-100 text-red-600 rounded animate-pulse"
-        title="Relacher pour transcrire"
-      >
-        <span className="inline-block w-2 h-2 bg-red-500 rounded-full" />
-        Enregistrement...
-      </button>
-    );
-  }
+  // Single button element — never swapped out, just changes appearance
+  const isRecording = state === 'recording';
+  const isProcessing = state === 'processing';
+  const isError = state === 'error';
 
-  if (state === 'processing') {
+  if (isProcessing) {
     return (
       <span className="flex items-center gap-1 px-2 py-1 text-xs text-slate-500">
         <svg className="w-3 h-3 animate-spin" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" strokeDasharray="30 70" />
         </svg>
-        Transcription...
       </span>
     );
   }
 
-  if (state === 'error') {
+  if (isError) {
     return (
       <button
         onClick={() => clearError()}
@@ -66,19 +62,31 @@ export function InlineDictation({ onTranscriptionComplete, disabled }: InlineDic
     );
   }
 
-  // idle
+  // Single button for idle + recording — same DOM element persists across re-renders
   return (
     <button
       onPointerDown={handlePointerDown}
+      onPointerUp={handlePointerUp}
       disabled={disabled}
       className={`px-2 py-1 text-xs rounded transition-colors ${
-        disabled
-          ? 'text-slate-300 cursor-not-allowed'
-          : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
+        isRecording
+          ? 'bg-red-100 text-red-600 animate-pulse'
+          : disabled
+            ? 'text-slate-300 cursor-not-allowed'
+            : 'text-slate-500 hover:text-blue-600 hover:bg-blue-50'
       }`}
-      title={disabled ? 'Modele Whisper non installe' : 'Maintenir pour dicter'}
+      title={
+        isRecording ? 'Relacher pour transcrire'
+          : disabled ? 'Modele Whisper non installe'
+            : 'Maintenir pour dicter'
+      }
     >
-      🎤
+      {isRecording ? (
+        <span className="flex items-center gap-1">
+          <span className="inline-block w-2 h-2 bg-red-500 rounded-full" />
+          Enreg...
+        </span>
+      ) : '🎤'}
     </button>
   );
 }

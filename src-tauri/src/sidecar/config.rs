@@ -15,7 +15,7 @@ impl SidecarConfig {
         match name {
             SidecarName::Whisper => SidecarConfig {
                 port: 8081,
-                binary_name: "binaries/whisper-server",
+                binary_name: "whisper-server",
                 healthcheck_url: "http://127.0.0.1:8081/".to_string(),
                 healthcheck_timeout: Duration::from_secs(30),
                 healthcheck_interval: Duration::from_millis(500),
@@ -23,7 +23,7 @@ impl SidecarConfig {
             },
             SidecarName::Llama => SidecarConfig {
                 port: 8080,
-                binary_name: "binaries/llama-server",
+                binary_name: "llama-server",
                 healthcheck_url: "http://127.0.0.1:8080/health".to_string(),
                 healthcheck_timeout: Duration::from_secs(15),
                 healthcheck_interval: Duration::from_millis(500),
@@ -46,7 +46,6 @@ pub fn build_args(
             "127.0.0.1".to_string(),
             "--port".to_string(),
             "8081".to_string(),
-            "--vad".to_string(),
             "--language".to_string(),
             "fr".to_string(),
             "--threads".to_string(),

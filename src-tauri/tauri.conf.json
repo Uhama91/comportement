@@ -36,6 +36,13 @@
     "externalBin": [
       "binaries/whisper-server",
       "binaries/llama-server"
-    ]
+    ],
+    "macOS": {
+      "minimumSystemVersion": "10.13",
+      "entitlements": "Entitlements.plist"
+    },
+    "iOS": {
+      "minimumSystemVersion": "13.0"
+    }
   }
 }
