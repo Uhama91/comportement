@@ -17,6 +17,9 @@ interface ModelStoreState {
   downloadProgress: DownloadProgress | null;
   downloadError: string | null;
 
+  // Derived
+  whisperReady: boolean;
+
   // Actions
   checkModels: () => Promise<void>;
   setSetupStep: (step: SetupStep) => void;
@@ -28,6 +31,7 @@ interface ModelStoreState {
 export const useModelStore = create<ModelStoreState>((set) => ({
   modelsStatus: null,
   loading: true,
+  whisperReady: false,
   setupStep: 'checking',
   showSetupWizard: false,
   downloadProgress: null,
@@ -37,7 +41,7 @@ export const useModelStore = create<ModelStoreState>((set) => ({
     try {
       set({ loading: true });
       const result = await invoke<ModelsCheckResult>('check_models_status');
-      set({ modelsStatus: result, loading: false });
+      set({ modelsStatus: result, loading: false, whisperReady: result.whisper.installed });
 
       // Show wizard if models not installed and user hasn't skipped
       if (!result.all_installed) {
