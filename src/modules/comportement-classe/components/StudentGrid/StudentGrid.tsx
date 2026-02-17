@@ -5,15 +5,18 @@ import { AddStudentForm } from '../../../../shared/components/AddStudentForm';
 import { WeeklySummary } from '../WeeklySummary';
 import { ExportButton } from '../../../../shared/components/ExportButton';
 import { useWindowSize, LIST_MODE_THRESHOLD } from '../../../../shared/hooks/useWindowSize';
+import { useTBIMode } from '../../../../shared/hooks/useFullscreen';
 
 interface StudentGridProps {
   compact?: boolean; // Mode compact pour fenêtre principale vs TBI
+  onNavigateToStudent?: (studentId: number) => void;
 }
 
-export function StudentGrid({ compact = true }: StudentGridProps) {
+export function StudentGrid({ compact = true, onNavigateToStudent }: StudentGridProps) {
   const { students, isLoading, error, loadStudents } = useStudentStore();
   const [showSummary, setShowSummary] = useState(false);
   const { width } = useWindowSize();
+  const isTBI = useTBIMode();
 
   // Mode liste si fenêtre trop petite
   const isListMode = width < LIST_MODE_THRESHOLD;
@@ -29,6 +32,12 @@ export function StudentGrid({ compact = true }: StudentGridProps) {
 
   // Calcul du nombre de colonnes optimal selon le nombre d'élèves et la largeur
   const getGridCols = (count: number): string => {
+    // TBI mode: fewer columns for larger, readable cards (visible at 3m)
+    if (isTBI) {
+      if (count <= 12) return 'grid-cols-3';
+      if (count <= 20) return 'grid-cols-4';
+      return 'grid-cols-5'; // 25-30 eleves
+    }
     // Pour les fenêtres moyennes (450-600px), moins de colonnes
     if (width < 600) return 'grid-cols-2';
     if (width < 800) return 'grid-cols-3';
@@ -100,6 +109,7 @@ export function StudentGrid({ compact = true }: StudentGridProps) {
               key={student.id}
               student={student}
               compact={compact}
+              onNavigateToStudent={onNavigateToStudent}
             />
           ))}
         </div>
@@ -121,6 +131,7 @@ export function StudentGrid({ compact = true }: StudentGridProps) {
               key={student.id}
               student={student}
               compact={compact}
+              onNavigateToStudent={onNavigateToStudent}
             />
           ))}
         </div>

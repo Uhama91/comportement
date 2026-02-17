@@ -70,6 +70,20 @@ export interface ExportData {
   weeklyHistory: WeekSummary[];
 }
 
+// Périodes scolaires (V2)
+export type TypePeriode = 'trimestre' | 'semestre';
+
+export interface Periode {
+  id: number;
+  anneeScolaire: string;
+  typePeriode: TypePeriode;
+  numero: number;
+  dateDebut: string; // YYYY-MM-DD
+  dateFin: string;   // YYYY-MM-DD
+  nomAffichage: string | null;
+  createdAt: string;
+}
+
 // IA Sidecar Types
 export interface TranscriptionResult {
   text: string;
@@ -116,4 +130,30 @@ export interface InsertResult {
   success: boolean;
   inserted_ids: number[];
   count: number;
+}
+
+// Model Management (Epic 16)
+export interface ModelInfo {
+  name: string;
+  filename: string;
+  installed: boolean;
+  path: string | null;
+  expected_size_mb: number;
+}
+
+export interface ModelsCheckResult {
+  whisper: ModelInfo;
+  llama: ModelInfo;
+  all_installed: boolean;
+  models_dir: string;
+}
+
+export interface DownloadProgress {
+  model_name: string;
+  downloaded_bytes: number;
+  total_bytes: number;
+  percentage: number;
+  current_model: number;
+  total_models: number;
+  status: 'downloading' | 'verifying' | 'complete' | 'error';
 }

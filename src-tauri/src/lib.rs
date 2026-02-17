@@ -8,6 +8,7 @@ use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod audio;
+mod models;
 mod sidecar;
 mod validation;
 
@@ -197,6 +198,7 @@ pub fn run() {
             Some(vec!["--minimized"]),
         ))
         .plugin(tauri_plugin_mic_recorder::init())
+        .plugin(tauri_plugin_dialog::init())
         .manage(sidecar::SidecarManager::new())
         .invoke_handler(tauri::generate_handler![
             audio::commands::save_wav_file,
@@ -208,6 +210,10 @@ pub fn run() {
             sidecar::transcription::transcribe_audio,
             sidecar::structuration::structure_text,
             validation::validate_and_insert_observations,
+            models::checker::check_models_status,
+            models::downloader::download_models,
+            models::downloader::cancel_download,
+            models::installer::install_models_from_folder,
         ])
         .setup(|app| {
             // Logging in debug mode

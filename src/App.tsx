@@ -5,7 +5,11 @@ import ApprentissageModule from './modules/apprentissage';
 import { Sidebar } from './shared/components/Sidebar';
 import { Settings } from './shared/components/Settings';
 import { ExportButton } from './shared/components/ExportButton';
+import { PeriodSelector } from './shared/components/PeriodSelector';
+import { ModelSetupWizard } from './shared/components/ModelSetupWizard';
 import { useStudentStore } from './shared/stores/studentStore';
+import { useConfigStore } from './shared/stores/configStore';
+import { useModelStore } from './shared/stores/modelStore';
 import { shouldTriggerRewards, markRewardTriggerDone } from './shared/utils/date';
 
 type ModuleId = 'classe' | 'individuel' | 'apprentissage';
@@ -14,7 +18,20 @@ function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>('classe');
   const [showSettings, setShowSettings] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
   const { triggerDailyRewards } = useStudentStore();
+  const { loadPeriodes } = useConfigStore();
+  const { showSetupWizard, checkModels } = useModelStore();
+
+  // Load periodes at startup
+  useEffect(() => {
+    loadPeriodes();
+  }, [loadPeriodes]);
+
+  // Check models at startup
+  useEffect(() => {
+    checkModels();
+  }, [checkModels]);
 
   // Check for automatic daily rewards at 16:30
   useEffect(() => {
@@ -34,17 +51,23 @@ function App() {
     return () => clearInterval(interval);
   }, [triggerDailyRewards]);
 
+  // Navigate to student detail (double-click from grid)
+  const navigateToStudent = (studentId: number) => {
+    setSelectedStudentId(studentId);
+    setActiveModule('individuel');
+  };
+
   // Render le module actif
   const renderActiveModule = () => {
     switch (activeModule) {
       case 'classe':
-        return <ComportementClasseModule />;
+        return <ComportementClasseModule onNavigateToStudent={navigateToStudent} />;
       case 'individuel':
-        return <ComportementIndividuelModule />;
+        return <ComportementIndividuelModule selectedStudentId={selectedStudentId} />;
       case 'apprentissage':
         return <ApprentissageModule />;
       default:
-        return <ComportementClasseModule />;
+        return <ComportementClasseModule onNavigateToStudent={navigateToStudent} />;
     }
   };
 
@@ -60,18 +83,24 @@ function App() {
 
       {/* Main content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className="bg-white border-b border-slate-200 px-4 py-2 flex-shrink-0">
+        <header className="bg-white border-b border-slate-200 px-4 py-2 flex-shrink-0 flex items-center justify-between">
           <h1 className="text-lg font-bold text-slate-800">
             Comportement
             {activeModule === 'individuel' && ' — Suivi Individuel'}
             {activeModule === 'apprentissage' && ' — Domaines d\'Apprentissage'}
           </h1>
+          {(activeModule === 'individuel' || activeModule === 'apprentissage') && (
+            <PeriodSelector />
+          )}
         </header>
 
         <main className="flex-1 bg-white m-2 rounded-lg shadow overflow-hidden">
           {renderActiveModule()}
         </main>
       </div>
+
+      {/* Model setup wizard */}
+      {showSetupWizard && <ModelSetupWizard />}
 
       {/* Modals */}
       {showSettings && <Settings onClose={() => setShowSettings(false)} />}

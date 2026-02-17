@@ -30,6 +30,7 @@
         { "name": "binaries/llama-server", "sidecar": true, "args": true }
       ]
     },
-    "shell:allow-kill"
+    "shell:allow-kill",
+    "dialog:default"
   ]
 }

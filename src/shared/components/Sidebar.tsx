@@ -10,8 +10,6 @@ interface SidebarProps {
   isTBIMode?: boolean;
 }
 
-const SIDEBAR_EXPANDED_WIDTH = 200;
-const SIDEBAR_COLLAPSED_WIDTH = 64;
 const EXPAND_THRESHOLD = 1280;
 
 export function Sidebar({

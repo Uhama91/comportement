@@ -4,22 +4,25 @@ import { useStudentStore } from '../../../../shared/stores/studentStore';
 import { SanctionReasonModal } from '../../../../shared/components/SanctionReasonModal';
 import { WeeklyRewardLine } from './WeeklyRewardLine';
 import { useWindowSize } from '../../../../shared/hooks/useWindowSize';
+import { useTBIMode } from '../../../../shared/hooks/useFullscreen';
 
 interface StudentGridCardProps {
   student: StudentWithSanctions;
   compact?: boolean;
+  onNavigateToStudent?: (studentId: number) => void;
 }
 
-export function StudentGridCard({ student, compact = true }: StudentGridCardProps) {
+export function StudentGridCard({ student, compact = true, onNavigateToStudent }: StudentGridCardProps) {
   const { addWarning, removeWarning, addSanction, deleteStudent, updateStudent, removeSanction, updateSanctionReason, toggleAbsence } = useStudentStore();
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState(student.firstName);
   const [showMenu, setShowMenu] = useState(false);
   const { width } = useWindowSize();
+  const isTBI = useTBIMode();
 
   // Taille adaptative selon la largeur de fenêtre
-  const isVerySmall = width < 500;
-  const isSmall = width < 700;
+  const isVerySmall = !isTBI && width < 500;
+  const isSmall = !isTBI && width < 700;
 
   // Modal state
   const [showReasonModal, setShowReasonModal] = useState(false);
@@ -98,8 +101,8 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
           relative flex flex-col rounded-lg border shadow-sm
           hover:shadow-md transition-shadow
           ${getBgColor()}
-          ${isVerySmall ? 'p-1.5 text-[10px]' : isSmall ? 'p-1.5 text-xs' : 'p-2 text-xs'}
-          ${compact ? '' : 'text-sm'}
+          ${isTBI ? 'p-3 text-lg' : isVerySmall ? 'p-1.5 text-[10px]' : isSmall ? 'p-1.5 text-xs' : 'p-2 text-xs'}
+          ${compact && !isTBI ? '' : 'text-sm'}
         `}
       >
         {/* Header: Prénom + Avertissements */}
@@ -119,7 +122,11 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
             <div
               className="flex-1 font-semibold text-slate-800 truncate cursor-pointer hover:text-blue-600"
               onClick={() => setIsEditing(true)}
-              title={student.firstName}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                onNavigateToStudent?.(student.id);
+              }}
+              title={`${student.firstName} (double-clic → fiche)`}
             >
               {student.firstName}
             </div>
@@ -132,7 +139,7 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
               className="flex items-center ml-1 flex-shrink-0 hover:scale-110 transition-transform cursor-pointer"
               title="Cliquer pour retirer un avertissement"
             >
-              <span className={compact ? 'text-sm' : 'text-base'}>⚠️</span>
+              <span className={isTBI ? 'text-2xl' : compact ? 'text-sm' : 'text-base'}>⚠️</span>
               {student.warnings >= 2 && (
                 <span className="text-[10px] font-bold text-amber-600 -ml-0.5">2</span>
               )}
@@ -195,7 +202,7 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
                 <button
                   key={sanction.id}
                   onClick={() => handleEditSanction(sanction)}
-                  className={`${compact ? 'text-sm' : 'text-base'} cursor-pointer hover:scale-110 transition-transform ${
+                  className={`${isTBI ? 'text-2xl' : compact ? 'text-sm' : 'text-base'} cursor-pointer hover:scale-110 transition-transform ${
                     sanction.reason ? 'opacity-100' : 'opacity-60'
                   }`}
                   title={sanction.reason || `Sanction ${i + 1}`}
@@ -227,7 +234,7 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
                 flex-1 rounded font-medium transition-colors
                 bg-amber-100 text-amber-700 hover:bg-amber-200
                 disabled:opacity-50 disabled:cursor-not-allowed
-                ${isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
+                ${isTBI ? 'py-3 text-xl min-h-[48px]' : isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
               `}
               title="Avertissement"
             >
@@ -240,7 +247,7 @@ export function StudentGridCard({ student, compact = true }: StudentGridCardProp
                 flex-1 rounded font-medium transition-colors
                 bg-red-100 text-red-700 hover:bg-red-200
                 disabled:opacity-50 disabled:cursor-not-allowed
-                ${isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
+                ${isTBI ? 'py-3 text-xl min-h-[48px]' : isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
               `}
               title="Sanction"
             >

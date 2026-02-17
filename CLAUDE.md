@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Description
 
-**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 en implémentation (Sprint 2 en cours).
+**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 en implémentation (Sprint 3 complété, Sprint 4 reste).
 
 **V1 (en production) :**
 - Système d'avertissements (1-2-3) avec reset quotidien à 16h30
@@ -38,7 +38,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## BMM Workflow Status
 
-### Phase actuelle : Phase 4 Implementation (Sprint 2 en cours)
+### Phase actuelle : Phase 4 Implementation (Sprint 4 reste)
 
 **Phase 1 — Analysis :**
 - [x] Brainstorming : `suivi-comportement-briefing-complet.md` (via Moltbot)
@@ -55,14 +55,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - [x] Implementation Readiness : complété (7 issues critiques résolues)
 
 **Phase 4 — Implementation :**
-- [x] **Sprint 1 : Epic 10 + Epic 11** (6/7 stories complétées)
-  - Epic 10 : Restructuration Modulaire V1→V2 (3/4 - Story 10.3 déférée à Sprint 3)
+- [x] **Sprint 1 : Epic 10 + Epic 11** (7/7 stories — COMPLET)
+  - Epic 10 : Restructuration Modulaire V1→V2 (4/4 - COMPLET, 10.3 fait en Sprint 3)
   - Epic 11 : Module 1 Evolutions (3/3 - COMPLET)
-- [ ] **Sprint 2 : Epic 13 + Epic 14** (8/11 stories — Epic 13 : 6/6 COMPLET, Epic 14 : 2/5)
+- [x] **Sprint 2 : Epic 13 + Epic 14** (11/11 stories — COMPLET)
   - Epic 13 : Infrastructure IA — Sidecars (6/6 - COMPLET)
-  - Epic 14 : Capture Audio + Transcription (2/5 - Stories 14.1 + 14.2 done)
-- [ ] Sprint 3 : Epic 12 + Epic 15 (Modules 2 et 3)
-- [ ] Sprint 4 : Epic 16 + Epic 17 (Gestion modèles + Polish)
+  - Epic 14 : Capture Audio + Transcription (5/5 - COMPLET)
+- [x] **Sprint 3 : Epic 12 + Epic 15** (9/9 stories — COMPLET)
+  - Story 10.3 : Configuration périodes scolaires (rattrapage Sprint 1)
+  - Epic 12 : Module 2 — Comportement Individuel (4/4 - COMPLET)
+  - Epic 15 : Module 3 — Domaines d'Apprentissage (5/5 - COMPLET)
+- [x] **Sprint 4 : Epic 16 + Epic 17** (8/9 stories code — COMPLET, 17.2 validation terrain)
+  - Epic 16 : Gestion Modeles GGUF (4/4 - COMPLET)
+  - Epic 17 : Polish et Distribution (4/5 code - COMPLET, 17.2 = validation terrain)
 
 **Documents V1 archivés dans** `archive-v1/` (tag git v1.0)
 
@@ -114,17 +119,26 @@ cargo test --manifest-path src-tauri/Cargo.toml
 npx tsc --noEmit
 ```
 
-## Stories en attente
+## Modules V2 implémentés
 
-### Story 10.3 : Configuration des périodes scolaires (SKIP temporaire)
-**Raison :** Story de taille L (complexe) nécessitant :
-- Store configStore pour gérer les périodes
-- UI complète dans Settings (trimestres/semestres, dates, validation)
-- Sélecteur de période dans barre d'outils
-- Logique de détection automatique période active
-- Pas bloquante pour Epic 10 (navigation modulaire)
+### Module 1 — Comportement Classe (Epic 11)
+- Motifs sanctions obligatoires (radio buttons + modal 3e avertissement)
+- Gestion absences consolidée (bouton Absent + label ABS)
+- Export JSON enrichi V2
 
-**Quand la reprendre :** Début Sprint 3 (avant Modules 2 et 3 qui dépendent des périodes)
+### Module 2 — Comportement Individuel (Epic 12)
+- Fiche individuelle élève (2-panel layout, stats, actions rapides)
+- Saisie d'incidents détaillés (modal form, types prédéfinis)
+- Historique chronologique (timeline, filtres type/période)
+- Modification/suppression incidents (edit inline, confirmation)
+- Navigation depuis Module 1 (double-clic sur carte élève)
+
+### Module 3 — Domaines d'Apprentissage (Epic 15)
+- Tableau domaines x élèves (AppreciationTable)
+- Pipeline LLM complet (dictée vocale → Whisper → texte → Qwen → observations structurées)
+- Résultat structuré éditable (StructuredObservations)
+- Saisie manuelle alternative (ManualEntryForm)
+- Domaines paramétrables dans Settings (DomainsSettings)
 
 ---
 
@@ -174,3 +188,14 @@ npx tsc --noEmit
 | 2026-02-12 | **Epic 13 COMPLET** (6/6 stories) — Sprint 2 : Epic 13 done, Epic 14 reste | `sprint-status.yaml` |
 | 2026-02-12 | Story 14.1 : Integration tauri-plugin-mic-recorder (package npm `tauri-plugin-mic-recorder-api`, hook useAudioRecorder, permissions, test component) | `Cargo.toml`, `package.json`, `capabilities/default.json`, `audio/mod.rs`, `useAudioRecorder.ts`, `AudioRecorderTest.tsx` |
 | 2026-02-12 | Story 14.2 : Fallback Web Audio API (getUserMedia, resample 16kHz, WAV builder, bascule auto Plan A→B, commande Rust save_wav_file) | `webAudioRecorder.ts`, `useAudioRecorder.ts`, `audio/mod.rs`, `lib.rs`, `AudioRecorderTest.tsx` |
+| 2026-02-13 | Story 10.3 : Configuration périodes scolaires (configStore, PeriodsSettings, PeriodSelector) | `configStore.ts`, `periodes.ts`, `PeriodsSettings.tsx`, `PeriodSelector.tsx`, `types/index.ts` |
+| 2026-02-13 | Story 12.1 : Fiche individuelle élève (2-panel layout, stats, navigation double-clic) | `StudentSummaryPanel.tsx`, `comportement-individuel/index.tsx`, `App.tsx` |
+| 2026-02-13 | Stories 12.2-12.4 : Incidents complets (saisie, historique, edit/delete, filtres) | `incidentStore.ts`, `IncidentForm.tsx`, `IncidentTabs.tsx` |
+| 2026-02-13 | Stories 14.3-14.5 : Pipeline audio déjà implémenté (VoiceDictation existant) | Vérifié, aucun code ajouté |
+| 2026-02-13 | Stories 15.1+15.4 : Tableau appréciations + saisie manuelle | `appreciationStore.ts`, `AppreciationTable.tsx`, `ManualEntryForm.tsx`, `apprentissage/index.tsx` |
+| 2026-02-13 | Story 15.2 : Pipeline LLM complet (useStructuration hook, invoke commands) | `useStructuration.ts`, `StructuredObservations.tsx`, `apprentissage/index.tsx` |
+| 2026-02-13 | Stories 15.3+15.5 : Résultat structuré + Domaines paramétrables | `DomainsSettings.tsx`, `Settings.tsx` |
+| 2026-02-13 | **Sprint 3 complété** (9/9 stories - Epic 12: 4/4, Epic 15: 5/5 + Story 10.3) | Build OK: 290KB JS, 31.5KB CSS |
+| 2026-02-17 | Epic 16 : Gestion modeles GGUF (detection, download, SHA256, USB install) | `models/checker.rs`, `downloader.rs`, `verifier.rs`, `installer.rs`, `ModelSetupWizard.tsx`, `DownloadProgress.tsx`, `UsbInstall.tsx`, `modelStore.ts` |
+| 2026-02-17 | Epic 17 : Polish (HelpSection, accessibilite TBI via useFullscreen hook, build config) | `HelpSection.tsx`, `useFullscreen.ts`, `Settings.tsx`, `StudentGridCard.tsx`, `StudentGrid.tsx` |
+| 2026-02-17 | **Sprint 4 complété** (8/9 stories code, 17.2=validation terrain) | Build OK: 305KB JS, 32KB CSS, 32 Rust tests |

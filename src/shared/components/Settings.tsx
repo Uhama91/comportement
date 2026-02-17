@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
+import { PeriodsSettings } from './PeriodsSettings';
+import { DomainsSettings } from './DomainsSettings';
+import { HelpSection } from './HelpSection';
+import { useModelStore } from '../stores/modelStore';
 
 interface SettingsProps {
   onClose: () => void;
@@ -8,6 +12,7 @@ interface SettingsProps {
 export function Settings({ onClose }: SettingsProps) {
   const [autostartEnabled, setAutostartEnabled] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const { modelsStatus, setShowSetupWizard, setSetupStep } = useModelStore();
 
   useEffect(() => {
     checkAutostart();
@@ -40,9 +45,9 @@ export function Settings({ onClose }: SettingsProps) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md">
+      <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-slate-800">Paramètres</h2>
+          <h2 className="text-xl font-bold text-slate-800">Parametres</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 text-2xl"
@@ -51,13 +56,23 @@ export function Settings({ onClose }: SettingsProps) {
           </button>
         </div>
 
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Périodes scolaires */}
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <PeriodsSettings />
+          </div>
+
+          {/* Domaines d'apprentissage */}
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <DomainsSettings />
+          </div>
+
           {/* Autostart */}
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-lg">
             <div>
-              <div className="font-medium text-slate-800">Démarrage automatique</div>
+              <div className="font-medium text-slate-800">Demarrage automatique</div>
               <div className="text-sm text-slate-500">
-                Lancer l'application au démarrage de l'ordinateur
+                Lancer l'application au demarrage de l'ordinateur
               </div>
             </div>
             {isLoading ? (
@@ -97,16 +112,56 @@ export function Settings({ onClose }: SettingsProps) {
               <div className="flex justify-between">
                 <span>Quitter le mode TBI</span>
                 <kbd className="px-2 py-0.5 bg-slate-200 rounded text-xs font-mono">
-                  Échap
+                  Echap
                 </kbd>
               </div>
             </div>
           </div>
 
+          {/* Modeles IA */}
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <div className="font-medium text-slate-800 mb-2">Modeles IA</div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">Whisper (dictee vocale)</span>
+                {modelsStatus?.whisper.installed ? (
+                  <span className="text-xs text-green-600 font-medium">Installe</span>
+                ) : (
+                  <span className="text-xs text-amber-600 font-medium">Absent</span>
+                )}
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-slate-600">Qwen (structuration)</span>
+                {modelsStatus?.llama.installed ? (
+                  <span className="text-xs text-green-600 font-medium">Installe</span>
+                ) : (
+                  <span className="text-xs text-amber-600 font-medium">Absent</span>
+                )}
+              </div>
+              {!modelsStatus?.all_installed && (
+                <button
+                  onClick={() => {
+                    onClose();
+                    setSetupStep('choose');
+                    setShowSetupWizard(true);
+                  }}
+                  className="mt-2 px-3 py-1.5 text-xs bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Installer les modeles
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Aide */}
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <HelpSection />
+          </div>
+
           {/* System tray info */}
           <div className="p-4 bg-blue-50 rounded-lg">
             <div className="text-sm text-blue-800">
-              <strong>Barre système :</strong> Cliquez sur l'icône dans la barre système pour afficher l'application.
+              <strong>Barre systeme :</strong> Cliquez sur l'icone dans la barre systeme pour afficher l'application.
             </div>
           </div>
         </div>
