@@ -71,7 +71,7 @@ export function DomainsSettings() {
 
             {/* Name */}
             <div className="flex-1 min-w-0">
-              {editingId === d.id ? (
+              {editingId === d.id && d.isCustom ? (
                 <div className="flex gap-1">
                   <input
                     type="text"
@@ -89,12 +89,24 @@ export function DomainsSettings() {
                   </button>
                 </div>
               ) : (
-                <span
-                  onClick={() => handleStartEdit(d)}
-                  className={`text-sm cursor-pointer hover:text-blue-600 ${d.actif ? 'text-slate-700' : 'text-slate-400 line-through'}`}
-                >
-                  {d.nom}
-                </span>
+                <div className="flex items-center gap-1.5">
+                  <span
+                    onClick={() => d.isCustom && handleStartEdit(d)}
+                    className={`text-sm ${d.isCustom ? 'cursor-pointer hover:text-blue-600' : 'cursor-default'} ${d.actif ? 'text-slate-700' : 'text-slate-400 line-through'}`}
+                  >
+                    {d.nom}
+                  </span>
+                  {d.cycle && (
+                    <span className="px-1 py-0.5 text-[9px] font-medium bg-slate-200 text-slate-500 rounded">
+                      C{d.cycle}
+                    </span>
+                  )}
+                  {d.isCustom && (
+                    <span className="px-1 py-0.5 text-[9px] font-medium bg-amber-100 text-amber-600 rounded">
+                      custom
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 

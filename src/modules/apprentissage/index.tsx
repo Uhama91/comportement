@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useStudentStore } from '../../shared/stores/studentStore';
 import { useConfigStore } from '../../shared/stores/configStore';
 import { useAppreciationStore } from '../../shared/stores/appreciationStore';
 import { AppreciationTable } from './components/AppreciationTable';
 import { ManualEntryForm } from './components/ManualEntryForm';
+import { NIVEAU_TO_CYCLE, type NiveauCode } from '../../shared/types/domaines-officiels';
 
 export default function ApprentissageModule() {
   const { students } = useStudentStore();
@@ -20,10 +21,19 @@ export default function ApprentissageModule() {
     }
   }, [students, currentStudentId]);
 
-  // Load domaines once
+  // Derive cycle from selected student
+  const currentStudent = useMemo(
+    () => students.find(s => s.id === currentStudentId),
+    [students, currentStudentId]
+  );
+  const currentCycle = currentStudent?.niveau
+    ? NIVEAU_TO_CYCLE[currentStudent.niveau as NiveauCode]
+    : null;
+
+  // Load domaines filtered by student's cycle (or all if no niveau)
   useEffect(() => {
-    loadDomaines();
-  }, [loadDomaines]);
+    loadDomaines(currentCycle);
+  }, [loadDomaines, currentCycle]);
 
   const currentPeriodeId = activePeriode?.id;
 
@@ -63,9 +73,15 @@ export default function ApprentissageModule() {
           onChange={e => setCurrentStudentId(Number(e.target.value))}
           className="text-sm px-3 py-1.5 border border-slate-300 rounded-lg bg-white text-slate-700 focus:border-blue-500 outline-none max-w-[200px]"
         >
-          {students.map(s => (
-            <option key={s.id} value={s.id}>{s.firstName}</option>
-          ))}
+          {students.map(s => {
+            const niv = s.niveau as NiveauCode | null;
+            const cyc = niv ? NIVEAU_TO_CYCLE[niv] : null;
+            return (
+              <option key={s.id} value={s.id}>
+                {s.firstName}{niv ? ` (${niv} - C${cyc})` : ''}
+              </option>
+            );
+          })}
         </select>
 
         <div className="flex gap-2 ml-auto">

@@ -10,6 +10,7 @@ import { ModelSetupWizard } from './shared/components/ModelSetupWizard';
 import { useStudentStore } from './shared/stores/studentStore';
 import { useConfigStore } from './shared/stores/configStore';
 import { useAnneeStore } from './shared/stores/anneeStore';
+import { useAppreciationStore } from './shared/stores/appreciationStore';
 import { useModelStore } from './shared/stores/modelStore';
 import { shouldTriggerRewards, markRewardTriggerDone } from './shared/utils/date';
 
@@ -23,12 +24,18 @@ function App() {
   const { triggerDailyRewards } = useStudentStore();
   const { loadPeriodes } = useConfigStore();
   const { loadAnnees } = useAnneeStore();
+  const { seedDomainesOfficiels } = useAppreciationStore();
   const { showSetupWizard, checkModels } = useModelStore();
 
   // Load annees scolaires at startup
   useEffect(() => {
     loadAnnees();
   }, [loadAnnees]);
+
+  // Seed domaines officiels (idempotent) + load periodes at startup
+  useEffect(() => {
+    seedDomainesOfficiels();
+  }, [seedDomainesOfficiels]);
 
   // Load periodes at startup
   useEffect(() => {

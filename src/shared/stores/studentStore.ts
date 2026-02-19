@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
-import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction, DailyReward, Absence } from '../types';
+import type { StudentWithSanctions, WeekSummary, ExportData, Student, Sanction, DailyReward, Absence, NiveauCode } from '../types';
 import { getCurrentWeek, shouldResetWarnings, markResetDone, shouldResetSanctions, markSanctionResetDone, getCurrentWorkDay, getResetKey } from '../utils/date';
 
 interface StudentStore {
@@ -20,6 +20,8 @@ interface StudentStore {
   updateSanctionReason: (sanctionId: number, reason: string) => Promise<void>;
   resetAllWarnings: () => Promise<void>;
   toggleAbsence: (studentId: number) => Promise<void>;
+  updateStudentNiveau: (studentId: number, niveau: NiveauCode | null) => Promise<void>;
+  updateStudentNiveauBatch: (studentIds: number[], niveau: NiveauCode) => Promise<void>;
 
   // Rewards
   triggerDailyRewards: () => Promise<void>;
@@ -71,6 +73,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
           s.id,
           s.first_name as firstName,
           s.warnings,
+          s.niveau,
           s.created_at as createdAt,
           COALESCE(COUNT(sa.id), 0) as weekSanctionCount
         FROM students s
@@ -409,6 +412,36 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
     }
   },
 
+  updateStudentNiveau: async (studentId, niveau) => {
+    try {
+      const db = await getDb();
+      await db.execute(
+        'UPDATE students SET niveau = $1 WHERE id = $2',
+        [niveau, studentId]
+      );
+      await get().loadStudents();
+    } catch (error) {
+      console.error('Error updating student niveau:', error);
+      set({ error: String(error) });
+    }
+  },
+
+  updateStudentNiveauBatch: async (studentIds, niveau) => {
+    try {
+      const db = await getDb();
+      for (const id of studentIds) {
+        await db.execute(
+          'UPDATE students SET niveau = $1 WHERE id = $2',
+          [niveau, id]
+        );
+      }
+      await get().loadStudents();
+    } catch (error) {
+      console.error('Error batch updating niveaux:', error);
+      set({ error: String(error) });
+    }
+  },
+
   resetAllWarnings: async () => {
     try {
       const db = await getDb();
@@ -660,7 +693,7 @@ export const useStudentStore = create<StudentStore>((set, get) => ({
 
       // Get all students
       const students = await db.select<Student[]>(`
-        SELECT id, first_name as firstName, warnings, created_at as createdAt
+        SELECT id, first_name as firstName, warnings, niveau, created_at as createdAt
         FROM students
         ORDER BY first_name ASC
       `);

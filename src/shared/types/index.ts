@@ -1,7 +1,11 @@
+// Re-export depuis domaines-officiels
+export type { NiveauCode, CycleNumber } from './domaines-officiels';
+
 export interface Student {
   id: number;
   firstName: string;
   warnings: number; // 0, 1, 2, or 3
+  niveau: string | null; // NiveauCode (PS-CM2) ou null si non defini
   createdAt: string;
 }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 import { AnneeSettings } from './AnneeSettings';
+import { NiveauxSettings } from './NiveauxSettings';
 import { PeriodsSettings } from './PeriodsSettings';
 import { DomainsSettings } from './DomainsSettings';
 import { HelpSection } from './HelpSection';
@@ -61,6 +62,11 @@ export function Settings({ onClose }: SettingsProps) {
           {/* Annee scolaire */}
           <div className="p-4 bg-slate-50 rounded-lg">
             <AnneeSettings />
+          </div>
+
+          {/* Niveaux scolaires */}
+          <div className="p-4 bg-slate-50 rounded-lg">
+            <NiveauxSettings />
           </div>
 
           {/* Périodes scolaires */}
