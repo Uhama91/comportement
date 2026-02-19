@@ -129,7 +129,7 @@ development_status:
   # referentiel officiel domaines par cycle, echelle LSU 4 niveaux
   epic-18: in-progress
   18-1-migrations-sqlite-v2-vers-v2-1: done
-  18-2-gestion-annee-scolaire: backlog
+  18-2-gestion-annee-scolaire: ready-for-dev
   18-3-niveaux-scolaires-et-referentiel-domaines: backlog
   18-4-echelle-lsu-4-niveaux: backlog
   epic-18-retrospective: optional

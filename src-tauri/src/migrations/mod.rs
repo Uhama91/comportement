@@ -20,12 +20,36 @@ pub fn get_db_path(app: &AppHandle) -> Result<PathBuf, String> {
 /// Crée une copie de sauvegarde du fichier SQLite avant les migrations.
 /// Nom : comportement_backup_{timestamp_unix}.sqlite dans le même dossier.
 pub fn backup_database(db_path: &PathBuf) -> Result<PathBuf, String> {
-    let ts = std::time::SystemTime::now()
+    let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_secs();
 
-    let backup_name = format!("comportement_backup_{}.sqlite", ts);
+    // Format YYYYMMDD_HHMMSS lisible pour l'utilisateur
+    // Calcul simple sans dépendance chrono (UTC)
+    let secs_per_day: u64 = 86400;
+    let days = now / secs_per_day;
+    let day_secs = now % secs_per_day;
+    let hours = day_secs / 3600;
+    let minutes = (day_secs % 3600) / 60;
+    let seconds = day_secs % 60;
+
+    // Algorithme civil date (days since 1970-01-01)
+    let z = days + 719468;
+    let era = z / 146097;
+    let doe = z - era * 146097;
+    let yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+
+    let backup_name = format!(
+        "comportement_backup_{:04}{:02}{:02}_{:02}{:02}{:02}.sqlite",
+        y, m, d, hours, minutes, seconds
+    );
     let backup_path = db_path
         .parent()
         .ok_or("Impossible de déterminer le dossier parent de la DB")?

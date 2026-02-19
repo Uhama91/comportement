@@ -98,7 +98,7 @@ pub fn migrations() -> Vec<V21Migration> {
                     eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
                     periode_id INTEGER NOT NULL REFERENCES config_periodes(id),
                     annee_scolaire_id INTEGER REFERENCES annees_scolaires(id),
-                    texte TEXT NOT NULL,
+                    texte TEXT NOT NULL CHECK(length(texte) <= 1500),
                     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                     UNIQUE(eleve_id, periode_id)
