@@ -84,6 +84,17 @@ export interface Periode {
   createdAt: string;
 }
 
+// Annee scolaire (V2.1)
+export interface AnneeScolaire {
+  id: number;
+  label: string;
+  dateDebut: string; // YYYY-MM-DD
+  dateFin: string;   // YYYY-MM-DD
+  active: boolean;
+  cloturee: boolean;
+  createdAt: string;
+}
+
 // IA Sidecar Types
 export interface TranscriptionResult {
   text: string;

@@ -7,6 +7,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod annee;
 mod audio;
 mod migrations;
 mod models;
@@ -211,6 +212,7 @@ pub fn run() {
         .manage(sidecar::SidecarManager::new())
         .invoke_handler(tauri::generate_handler![
             ensure_v2_1_migrations,
+            annee::check_annee_not_closed,
             audio::commands::save_wav_file,
             sidecar::commands::start_sidecar,
             sidecar::commands::stop_sidecar,
