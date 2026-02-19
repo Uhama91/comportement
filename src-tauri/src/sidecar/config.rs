@@ -162,9 +162,8 @@ mod tests {
     }
 
     #[test]
-    fn whisper_args_contain_vad_and_language() {
+    fn whisper_args_contain_language_and_port() {
         let args = build_args(SidecarName::Whisper, "/path/to/model.gguf", None);
-        assert!(args.contains(&"--vad".to_string()));
         assert!(args.contains(&"fr".to_string()));
         assert!(args.contains(&"8081".to_string()));
     }

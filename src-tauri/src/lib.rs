@@ -8,9 +8,18 @@ use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod audio;
+mod migrations;
 mod models;
 mod sidecar;
 mod validation;
+
+/// Commande Tauri exposée au frontend pour déclencher les migrations V2.1.
+/// Le frontend doit l'appeler après l'ouverture de la DB (Database.open) pour couvrir
+/// le cas d'une installation fraîche où la DB n'existait pas au démarrage.
+#[tauri::command]
+async fn ensure_v2_1_migrations(app: tauri::AppHandle) -> Result<(), String> {
+    migrations::run_v2_1_migrations(&app).await
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -201,6 +210,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(sidecar::SidecarManager::new())
         .invoke_handler(tauri::generate_handler![
+            ensure_v2_1_migrations,
             audio::commands::save_wav_file,
             sidecar::commands::start_sidecar,
             sidecar::commands::stop_sidecar,
@@ -254,6 +264,17 @@ pub fn run() {
                     let _ = window.set_focus();
                 }
             })?;
+
+            // Migrations V2→V2.1 : lancées en arrière-plan dès le démarrage.
+            // Couvre le cas upgrade (DB V2 existante) sans bloquer l'UI.
+            // Pour une installation fraîche, le frontend appelle ensure_v2_1_migrations
+            // après Database.open() pour couvrir le cas où la DB n'existait pas encore.
+            let migration_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Err(e) = migrations::run_v2_1_migrations(&migration_handle).await {
+                    eprintln!("[setup] Erreur migrations V2.1 : {}", e);
+                }
+            });
 
             Ok(())
         })

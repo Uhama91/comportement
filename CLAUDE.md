@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Description
 
-**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 en implémentation (Sprint 3 complété, Sprint 4 reste).
+**Comportement** — Application desktop locale (Tauri v2) pour le suivi pédagogique complet des élèves en école élémentaire (CM2, École Victor Hugo, Sevran). V1 en production, V2 implémentée (4 sprints), V2.1 en planning.
 
 **V1 (en production) :**
 - Système d'avertissements (1-2-3) avec reset quotidien à 16h30
@@ -13,12 +13,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Double interface : vue compact enseignant + vue TBI plein écran
 - Export JSON pour analyse externe
 
-**V2 (en planning — 3 modules + IA locale) :**
-- Module 1 — Comportement Classe : évolution V1 + motifs sanctions + absences + synthèse LLM
+**V2 (implémentée — 3 modules + IA locale) :**
+- Module 1 — Comportement Classe : évolution V1 + motifs sanctions + absences
 - Module 2 — Comportement Individuel : incidents détaillés par élève et par période
 - Module 3 — Domaines d'Apprentissage : dictée vocale (Whisper.cpp) + structuration auto (Qwen 2.5 LLM)
 - IA locale 100% offline : pipeline séquentiel push-to-talk, un seul modèle actif à la fois
 - Périodes scolaires configurables (trimestres/semestres)
+
+**V2.1 (en planning — refonte Module 3 + LSU + multi-niveaux) :**
+- Refonte Module 3 : LLM classificateur+fusionneur (pas générateur), GBNF dynamique, review panel inline
+- Multi-niveaux : élèves PS→CM2 dans une même classe, domaines par cycle (C1/C2/C3)
+- Année scolaire : création → active → clôturée (read-only), guard Rust
+- Export LSU XML : Livret Scolaire Unique officiel via quick-xml Rust
+- Undo atomique : colonne previous_observations, transaction SQL BEGIN/COMMIT
+- Migrations V2→V2.1 : 8 migrations additives avec backup fichier + savepoints SQL
 
 ## Stack Technique
 
@@ -38,7 +46,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## BMM Workflow Status
 
-### Phase actuelle : Phase 4 Implementation (Sprint 4 reste)
+### V2.1 — Phase actuelle : Phase 3 Solutioning (Architecture done, Epics next)
+
+**Phase 1 — Analysis V2.1 :**
+- [x] Brainstorming V2.1 : `brainstorming-session-2026-02-17.md`
+- [x] Validation PRD V2→V2.1 : `validation-report-prd-v2-to-v2.1.md`
+
+**Phase 2 — Planning V2.1 :**
+- [x] PRD V2.1 : `prd-v2.1.md` (65 FRs, 30 NFRs, 8 migrations, refonte Module 3)
+
+**Phase 3 — Solutioning V2.1 :**
+- [x] Architecture V2.1 : `architecture-v2.1.md` (13 ADRs, 8 steps, 15 nouveaux fichiers)
+- [ ] Epics & Stories V2.1 : en cours
+
+### V2 — Phase 4 Implementation (COMPLETE)
 
 **Phase 1 — Analysis :**
 - [x] Brainstorming : `suivi-comportement-briefing-complet.md` (via Moltbot)
@@ -96,6 +117,15 @@ Tous les documents V2 sont dans `_bmad-output/planning-artifacts/`
 - **ADR-004 : Watchdog whisper-server** — Restart auto après handle leak Windows (~50 requêtes)
 - **ADR-005 : Audio capture** — tauri-plugin-mic-recorder Plan A, Web Audio API Plan B
 - **ADR-006 : Qwen 2.5 Coder 1.5B** — Pas Qwen3 pour V2.0, évaluer en V2.1
+
+**V2.1 (ADRs — voir `architecture-v2.1.md`) :**
+- **ADR-007 : GBNF dynamique** — Grammaire générée par requête depuis DB (domaines actifs par cycle élève)
+- **ADR-008 : Budget tokens adaptatif** — ctx-size 2048, troncature intelligente du prompt
+- **ADR-009 : Review panel inline** — Panneau diff Avant/Après (pas de modal), Zustand reviewStore
+- **ADR-010 : Undo atomique** — Colonne previous_observations, transaction SQL BEGIN/COMMIT
+- **ADR-011 : Année scolaire flag+guard** — Champ cloturee en DB, guard Rust check_annee_not_closed
+- **ADR-012 : Export LSU XML** — Crate quick-xml Rust, mapping échelle 4 niveaux
+- **ADR-013 : Migrations backup+savepoints** — Backup fichier SQLite + SQL SAVEPOINT par migration
 
 ## Commandes de développement
 
@@ -200,3 +230,6 @@ npx tsc --noEmit
 | 2026-02-17 | Epic 17 : Polish (HelpSection, accessibilite TBI via useFullscreen hook, build config) | `HelpSection.tsx`, `useFullscreen.ts`, `Settings.tsx`, `StudentGridCard.tsx`, `StudentGrid.tsx` |
 | 2026-02-17 | **Sprint 4 complété** (8/9 stories code, 17.2=validation terrain) | Build OK: 305KB JS, 32KB CSS, 32 Rust tests |
 | 2026-02-17 | Fix dictée vocale : permission micro macOS, sidecar name resolution, retrait --vad | `Info.plist`, `Entitlements.plist`, `tauri.conf.json`, `config.rs`, `capabilities/default.json` |
+| 2026-02-17 | Epics & Stories V2.1 (4 epics 18-21, 15 stories, 17 FRs, 6 NFRs) | `epics-v2.1.md` |
+| 2026-02-17 | Brainstorming V2.1 + PRD V2.1 (65 FRs, 30 NFRs) | `brainstorming-session-2026-02-17.md`, `prd-v2.1.md` |
+| 2026-02-17 | Architecture V2.1 complétée (13 ADRs, 8 steps, validation OK) | `architecture-v2.1.md` |

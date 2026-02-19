@@ -1,4 +1,4 @@
-# generated: 2026-02-10
+# generated: 2026-02-19
 # project: comportement
 # tracking_system: file-system
 # story_location: _bmad-output/implementation-artifacts
@@ -27,28 +27,36 @@
 # - SM typically creates next story ONLY after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then Dev runs code-review (fresh context, ideally different LLM)
 #
-# SPRINT PLAN:
-# ============
-# Sprint 1: Epic 10 + Epic 11 (Restructuration + Evolutions Module 1)
-# Sprint 2: Epic 13 + Epic 14 (Infrastructure IA + Capture audio)
-# Sprint 3: Epic 12 + Epic 15 (Modules 2 et 3)
-# Sprint 4: Epic 16 + Epic 17 (Gestion modeles + Polish)
+# SPRINT PLAN V2 (COMPLETS):
+# ==========================
+# Sprint 1: Epic 10 + Epic 11 (Restructuration + Evolutions Module 1) — DONE
+# Sprint 2: Epic 13 + Epic 14 (Infrastructure IA + Capture audio) — DONE
+# Sprint 3: Epic 12 + Epic 15 + Story 10.3 (Modules 2 et 3) — DONE
+# Sprint 4: Epic 16 + Epic 17 (Gestion modeles + Polish) — DONE (17.2 = validation terrain)
+#
+# SPRINT PLAN V2.1 (EN COURS DE PLANIFICATION):
+# ==============================================
+# Sprint 1: Epic 18 (Annee Scolaire & Multi-niveaux — fondation)
+# Sprint 2: Epic 19 (Pipeline Vocal Intelligent — GBNF + LLM)
+# Sprint 3: Epic 20 (Validation, Saisie & Undo — review panel)
+# Sprint 4: Epic 21 (Export LSU & Cycle Scolaire)
 
-generated: "2026-02-10"
+generated: "2026-02-19"
 project: comportement
 tracking_system: file-system
 story_location: "_bmad-output/implementation-artifacts"
 
 development_status:
+
   # ============================================================
-  # Sprint 1 — Restructuration + Evolutions Module 1
+  # V2 — COMPLET (Sprints 1-4)
   # ============================================================
 
   # Epic 10 : Restructuration Modulaire V1 vers V2
-  epic-10: in-progress
+  epic-10: done
   10-1-reorganiser-arborescence-modules-shared: done
   10-2-migrations-sqlite-v2: done
-  10-3-configuration-periodes-scolaires: backlog
+  10-3-configuration-periodes-scolaires: done
   10-4-navigation-entre-modules: done
   epic-10-retrospective: optional
 
@@ -58,10 +66,6 @@ development_status:
   11-2-gestion-absences-consolidee: done
   11-3-export-json-enrichi-v2: done
   epic-11-retrospective: optional
-
-  # ============================================================
-  # Sprint 2 — Infrastructure IA + Capture Audio
-  # ============================================================
 
   # Epic 13 : Infrastructure IA — Sidecars
   epic-13: done
@@ -74,52 +78,99 @@ development_status:
   epic-13-retrospective: optional
 
   # Epic 14 : Capture Audio + Transcription
-  epic-14: in-progress
+  epic-14: done
   14-1-integration-tauri-plugin-mic-recorder: done
   14-2-fallback-web-audio-api: done
-  14-3-pipeline-audio-complet: backlog
-  14-4-affichage-correction-texte-transcrit: backlog
-  14-5-composant-voice-dictation: backlog
+  14-3-pipeline-audio-complet: done
+  14-4-affichage-correction-texte-transcrit: done
+  14-5-composant-voice-dictation: done
   epic-14-retrospective: optional
 
-  # ============================================================
-  # Sprint 3 — Modules 2 et 3
-  # ============================================================
-
   # Epic 12 : Module 2 — Comportement Individuel
-  epic-12: backlog
-  12-1-fiche-individuelle-eleve: backlog
-  12-2-saisie-incidents-detailles: backlog
-  12-3-historique-chronologique-par-eleve: backlog
-  12-4-modification-suppression-incidents: backlog
+  epic-12: done
+  12-1-fiche-individuelle-eleve: done
+  12-2-saisie-incidents-detailles: done
+  12-3-historique-chronologique-par-eleve: done
+  12-4-modification-suppression-incidents: done
   epic-12-retrospective: optional
 
   # Epic 15 : Module 3 — Domaines d'Apprentissage
-  epic-15: backlog
-  15-1-interface-tableau-domaines-eleves: backlog
-  15-2-pipeline-llm-complet: backlog
-  15-3-affichage-resultat-structure-avant-validation: backlog
-  15-4-saisie-manuelle-alternative: backlog
-  15-5-domaines-apprentissage-parametrables: backlog
+  epic-15: done
+  15-1-interface-tableau-domaines-eleves: done
+  15-2-pipeline-llm-complet: done
+  15-3-affichage-resultat-structure-avant-validation: done
+  15-4-saisie-manuelle-alternative: done
+  15-5-domaines-apprentissage-parametrables: done
   epic-15-retrospective: optional
 
-  # ============================================================
-  # Sprint 4 — Gestion Modeles + Polish
-  # ============================================================
-
   # Epic 16 : Gestion des Modeles GGUF
-  epic-16: backlog
-  16-1-detection-premier-lancement-ecran-setup: backlog
-  16-2-telechargement-sequentiel-progression: backlog
-  16-3-verification-sha256-stockage: backlog
-  16-4-installation-usb-alternative: backlog
+  epic-16: done
+  16-1-detection-premier-lancement-ecran-setup: done
+  16-2-telechargement-sequentiel-progression: done
+  16-3-verification-sha256-stockage: done
+  16-4-installation-usb-alternative: done
   epic-16-retrospective: optional
 
   # Epic 17 : Polish et Distribution
-  epic-17: backlog
-  17-1-build-cross-platform: backlog
-  17-2-tests-performance-pc-ecole: backlog
-  17-3-mode-portable-exe: backlog
-  17-4-documentation-utilisateur: backlog
-  17-5-validation-accessibilite-tbi: backlog
+  epic-17: in-progress
+  17-1-build-cross-platform: done
+  17-2-tests-performance-pc-ecole: in-progress
+  17-3-mode-portable-exe: done
+  17-4-documentation-utilisateur: done
+  17-5-validation-accessibilite-tbi: done
   epic-17-retrospective: optional
+
+  # ============================================================
+  # V2.1 — Sprint 1 : Epic 18 (Annee Scolaire & Multi-niveaux)
+  # ============================================================
+
+  # Epic 18 : Annee Scolaire & Multi-niveaux
+  # Fondation V2.1 — 8 migrations SQLite, annee scolaire, niveaux PS-CM2,
+  # referentiel officiel domaines par cycle, echelle LSU 4 niveaux
+  epic-18: in-progress
+  18-1-migrations-sqlite-v2-vers-v2-1: done
+  18-2-gestion-annee-scolaire: backlog
+  18-3-niveaux-scolaires-et-referentiel-domaines: backlog
+  18-4-echelle-lsu-4-niveaux: backlog
+  epic-18-retrospective: optional
+
+  # ============================================================
+  # V2.1 — Sprint 2 : Epic 19 (Pipeline Vocal Intelligent)
+  # ============================================================
+
+  # Epic 19 : Pipeline Vocal Intelligent
+  # GBNF dynamique, micro unique global, LLM classificateur/fusionneur
+  # Depends on: Epic 18
+  epic-19: backlog
+  19-1-gbnf-dynamique-et-prompt-builder: backlog
+  19-2-micro-unique-global: backlog
+  19-3-classification-et-fusion-llm: backlog
+  19-4-integration-pipeline-bout-en-bout: backlog
+  epic-19-retrospective: optional
+
+  # ============================================================
+  # V2.1 — Sprint 3 : Epic 20 (Validation, Saisie & Undo)
+  # ============================================================
+
+  # Epic 20 : Validation, Saisie & Undo
+  # Review panel inline diff Avant/Apres, undo atomique, saisie manuelle refonte
+  # Depends on: Epic 18, Epic 19
+  epic-20: backlog
+  20-1-review-panel-diff-avant-apres: backlog
+  20-2-undo-derniere-modification-llm: backlog
+  20-3-saisie-manuelle-refonte: backlog
+  epic-20-retrospective: optional
+
+  # ============================================================
+  # V2.1 — Sprint 4 : Epic 21 (Export LSU & Cycle Scolaire)
+  # ============================================================
+
+  # Epic 21 : Export LSU & Cycle Scolaire
+  # Appreciation generale, identifiants ONDE, export LSU XML, assistant de rentree
+  # Depends on: Epic 18 (annee scolaire, niveaux)
+  epic-21: backlog
+  21-1-appreciation-generale-par-eleve: backlog
+  21-2-identifiants-onde: backlog
+  21-3-export-lsu-xml: backlog
+  21-4-assistant-de-rentree: backlog
+  epic-21-retrospective: optional
