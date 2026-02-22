@@ -52,7 +52,11 @@ pub fn build_args(
             "4".to_string(),
         ],
         SidecarName::Llama => {
-            let mut args = vec![
+            // Note: grammar is passed per-request in the API body (ADR-007 V2.1),
+            // not via --grammar-file at server startup.
+            // grammar_path parameter kept for backward compatibility but ignored.
+            let _ = grammar_path; // suppress unused warning
+            vec![
                 "--model".to_string(),
                 model_path.to_string(),
                 "--host".to_string(),
@@ -60,15 +64,10 @@ pub fn build_args(
                 "--port".to_string(),
                 "8080".to_string(),
                 "--ctx-size".to_string(),
-                "1024".to_string(),
+                "2048".to_string(),
                 "--threads".to_string(),
                 "4".to_string(),
-            ];
-            if let Some(grammar) = grammar_path {
-                args.push("--grammar-file".to_string());
-                args.push(grammar.to_string());
-            }
-            args
+            ]
         }
     }
 }
@@ -169,20 +168,22 @@ mod tests {
     }
 
     #[test]
-    fn llama_args_contain_grammar_when_provided() {
+    fn llama_args_no_grammar_file_flag() {
+        // ADR-007 V2.1: grammar is per-request in API body, not at server startup
         let args = build_args(
             SidecarName::Llama,
             "/path/to/model.gguf",
             Some("/path/to/grammar.gbnf"),
         );
-        assert!(args.contains(&"--grammar-file".to_string()));
-        assert!(args.contains(&"/path/to/grammar.gbnf".to_string()));
+        assert!(!args.contains(&"--grammar-file".to_string()));
+        assert!(args.contains(&"2048".to_string())); // ctx-size upgraded
     }
 
     #[test]
-    fn llama_args_omit_grammar_when_none() {
+    fn llama_args_ctx_size_2048() {
         let args = build_args(SidecarName::Llama, "/path/to/model.gguf", None);
-        assert!(!args.contains(&"--grammar-file".to_string()));
+        let ctx_idx = args.iter().position(|a| a == "--ctx-size").unwrap();
+        assert_eq!(args[ctx_idx + 1], "2048");
     }
 
     #[test]

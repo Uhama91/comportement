@@ -141,8 +141,8 @@ development_status:
   # Epic 19 : Pipeline Vocal Intelligent
   # GBNF dynamique, micro unique global, LLM classificateur/fusionneur
   # Depends on: Epic 18
-  epic-19: backlog
-  19-1-gbnf-dynamique-et-prompt-builder: backlog
+  epic-19: in-progress
+  19-1-gbnf-dynamique-et-prompt-builder: done
   19-2-micro-unique-global: backlog
   19-3-classification-et-fusion-llm: backlog
   19-4-integration-pipeline-bout-en-bout: backlog
