@@ -1,7 +1,5 @@
 import { useEffect, useState } from 'react';
 import { useAppreciationStore, type Appreciation, type Domaine } from '../../../shared/stores/appreciationStore';
-import { useModelStore } from '../../../shared/stores/modelStore';
-import { InlineDictation } from './InlineDictation';
 import { NIVEAUX_LSU, type NiveauLsu } from '../../../shared/types';
 
 interface AppreciationTableProps {
@@ -15,7 +13,6 @@ const NIVEAU_COLORS: Record<string, string> = Object.fromEntries(
 
 export function AppreciationTable({ eleveId, periodeId }: AppreciationTableProps) {
   const { domaines, appreciations, isLoading, loadAppreciations, addAppreciation, updateAppreciation } = useAppreciationStore();
-  const { whisperReady } = useModelStore();
 
   // Les domaines sont charges par le parent (apprentissage/index.tsx) avec le cycle de l'eleve
 
@@ -48,7 +45,6 @@ export function AppreciationTable({ eleveId, periodeId }: AppreciationTableProps
             <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500 w-[180px]">Domaine</th>
             <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500 w-[160px]">Niveau</th>
             <th className="text-left py-2 px-3 text-xs font-semibold text-slate-500">Observations</th>
-            <th className="py-2 px-2 text-xs font-semibold text-slate-500 w-[40px]"></th>
           </tr>
         </thead>
         <tbody>
@@ -59,7 +55,6 @@ export function AppreciationTable({ eleveId, periodeId }: AppreciationTableProps
               appreciation={appreciationMap.get(domaine.id) || null}
               eleveId={eleveId}
               periodeId={periodeId}
-              whisperReady={whisperReady}
               onAddAppreciation={addAppreciation}
               onUpdateAppreciation={updateAppreciation}
             />
@@ -81,7 +76,6 @@ function DomainRow({
   appreciation,
   eleveId,
   periodeId,
-  whisperReady,
   onAddAppreciation,
   onUpdateAppreciation,
 }: {
@@ -89,7 +83,6 @@ function DomainRow({
   appreciation: Appreciation | null;
   eleveId: number;
   periodeId: number;
-  whisperReady: boolean;
   onAddAppreciation: (data: {
     eleveId: number;
     periodeId: number;
@@ -125,23 +118,6 @@ function DomainRow({
       await onAddAppreciation({ eleveId, periodeId, domaineId: domaine.id, observations: trimmed });
     }
     setEditingObs(false);
-  };
-
-  const handleTranscription = async (text: string) => {
-    if (appreciation) {
-      // Append to existing observations
-      const current = appreciation.observations || '';
-      const newObs = current ? `${current} ${text}` : text;
-      await onUpdateAppreciation(appreciation.id, { observations: newObs });
-    } else {
-      await onAddAppreciation({
-        eleveId,
-        periodeId,
-        domaineId: domaine.id,
-        observations: text,
-        texteDictation: text,
-      });
-    }
   };
 
   const niveauValue = appreciation?.niveauLsu || '';
@@ -185,12 +161,6 @@ function DomainRow({
             {appreciation?.observations || <span className="text-slate-300 italic">Cliquer pour ajouter</span>}
           </span>
         )}
-      </td>
-      <td className="py-2 px-2 text-center">
-        <InlineDictation
-          onTranscriptionComplete={handleTranscription}
-          disabled={!whisperReady}
-        />
       </td>
     </tr>
   );

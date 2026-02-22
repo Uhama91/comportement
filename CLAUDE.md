@@ -62,7 +62,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Phase 4 — Implementation V2.1 :**
 - [x] **Sprint 1 V2.1 : Epic 18** (4/4 stories — COMPLET)
   - Epic 18 : Annee Scolaire & Multi-niveaux (migrations, CRUD annee, niveaux, referentiel domaines, echelle LSU)
-- [ ] **Sprint 2 V2.1 : Epic 19** (1/4 stories — EN COURS)
+- [ ] **Sprint 2 V2.1 : Epic 19** (2/4 stories — EN COURS)
   - Epic 19 : Pipeline Vocal Intelligent (GBNF dynamique, micro unique, LLM classificateur)
 
 ### V2 — Phase 4 Implementation (COMPLETE)
@@ -242,3 +242,4 @@ npx tsc --noEmit
 | 2026-02-22 | Story 18.4 : Echelle LSU 4 niveaux (NiveauLsu type, NIVEAUX_LSU constantes, store/UI migres) | `types/index.ts`, `appreciationStore.ts`, `AppreciationTable.tsx`, `ManualEntryForm.tsx` |
 | 2026-02-22 | **Epic 18 COMPLET** (4/4 stories) — Sprint 1 V2.1 done | `sprint-status.yaml` |
 | 2026-02-22 | Story 19.1 : GBNF dynamique + prompt builder (ADR-007/008, ctx-size 2048, 15 tests) | `gbnf.rs`, `prompt_builder.rs`, `config.rs`, `mod.rs` |
+| 2026-02-22 | Story 19.2 : Micro unique global (ToolbarMic, TranscriptPreview, dictationStore, suppression InlineDictation) | `dictationStore.ts`, `ToolbarMic.tsx`, `TranscriptPreview.tsx`, `AppreciationTable.tsx`, `apprentissage/index.tsx` |

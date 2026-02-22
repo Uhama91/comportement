@@ -2,14 +2,20 @@ import { useState, useEffect, useMemo } from 'react';
 import { useStudentStore } from '../../shared/stores/studentStore';
 import { useConfigStore } from '../../shared/stores/configStore';
 import { useAppreciationStore } from '../../shared/stores/appreciationStore';
+import { useModelStore } from '../../shared/stores/modelStore';
+import { useDictationStore } from '../../shared/stores/dictationStore';
 import { AppreciationTable } from './components/AppreciationTable';
 import { ManualEntryForm } from './components/ManualEntryForm';
+import { ToolbarMic } from './components/ToolbarMic';
+import { TranscriptPreview } from './components/TranscriptPreview';
 import { NIVEAU_TO_CYCLE, type NiveauCode } from '../../shared/types/domaines-officiels';
 
 export default function ApprentissageModule() {
   const { students } = useStudentStore();
   const { periodes, activePeriode } = useConfigStore();
   const { loadDomaines, loadAppreciations } = useAppreciationStore();
+  const { whisperReady } = useModelStore();
+  const clearDictation = useDictationStore(s => s.clear);
 
   const [currentStudentId, setCurrentStudentId] = useState<number | null>(null);
   const [showManualForm, setShowManualForm] = useState(false);
@@ -36,6 +42,11 @@ export default function ApprentissageModule() {
   }, [loadDomaines, currentCycle]);
 
   const currentPeriodeId = activePeriode?.id;
+
+  // Clear dictation when student changes
+  useEffect(() => {
+    clearDictation();
+  }, [currentStudentId, clearDictation]);
 
   const handleReload = () => {
     if (currentStudentId && currentPeriodeId) {
@@ -84,6 +95,12 @@ export default function ApprentissageModule() {
           })}
         </select>
 
+        <ToolbarMic
+          eleveId={currentStudentId}
+          periodeId={currentPeriodeId ?? null}
+          disabled={!whisperReady}
+        />
+
         <div className="flex gap-2 ml-auto">
           <button
             onClick={() => setShowManualForm(true)}
@@ -93,6 +110,9 @@ export default function ApprentissageModule() {
           </button>
         </div>
       </div>
+
+      {/* Transcript preview (between toolbar and table) */}
+      <TranscriptPreview />
 
       {/* Appreciation table */}
       <div className="flex-1 overflow-y-auto p-4">
