@@ -20,7 +20,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - IA locale 100% offline : pipeline séquentiel push-to-talk, un seul modèle actif à la fois
 - Périodes scolaires configurables (trimestres/semestres)
 
-**V2.1 (en planning — refonte Module 3 + LSU + multi-niveaux) :**
+**V2.1 (en cours — refonte Module 3 + LSU + multi-niveaux) :**
 - Refonte Module 3 : LLM classificateur+fusionneur (pas générateur), GBNF dynamique, review panel inline
 - Multi-niveaux : élèves PS→CM2 dans une même classe, domaines par cycle (C1/C2/C3)
 - Année scolaire : création → active → clôturée (read-only), guard Rust
@@ -46,24 +46,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## BMM Workflow Status
 
-### V2.1 — Phase actuelle : Phase 3 Solutioning (Architecture done, Epics next)
+### V2.1 — Phase 4 Implementation (EN COURS)
 
-**Phase 1 — Analysis V2.1 :**
-- [x] Brainstorming V2.1 : `brainstorming-session-2026-02-17.md`
-- [x] Validation PRD V2→V2.1 : `validation-report-prd-v2-to-v2.1.md`
+**Phases 1-3** (Analysis, Planning, Solutioning) : COMPLET
+- Docs : `brainstorming-session-2026-02-17.md`, `prd-v2.1.md`, `architecture-v2.1.md`, `epics-v2.1.md`
 
-**Phase 2 — Planning V2.1 :**
-- [x] PRD V2.1 : `prd-v2.1.md` (65 FRs, 30 NFRs, 8 migrations, refonte Module 3)
-
-**Phase 3 — Solutioning V2.1 :**
-- [x] Architecture V2.1 : `architecture-v2.1.md` (13 ADRs, 8 steps, 15 nouveaux fichiers)
-- [x] Epics & Stories V2.1 : `epics-v2.1.md` (4 epics 18-21, 15 stories)
-
-**Phase 4 — Implementation V2.1 :**
-- [x] **Sprint 1 V2.1 : Epic 18** (4/4 stories — COMPLET)
-  - Epic 18 : Annee Scolaire & Multi-niveaux (migrations, CRUD annee, niveaux, referentiel domaines, echelle LSU)
-- [ ] **Sprint 2 V2.1 : Epic 19** (2/4 stories — EN COURS)
-  - Epic 19 : Pipeline Vocal Intelligent (GBNF dynamique, micro unique, LLM classificateur)
+**Phase 4 — Implementation :**
+- [x] **Sprint 1 : Epic 18** (4/4 stories — COMPLET)
+  - Annee Scolaire & Multi-niveaux (migrations, CRUD, niveaux PS-CM2, referentiel domaines, echelle LSU)
+- [ ] **Sprint 2 : Epic 19** (3/4 stories — EN COURS)
+  - 19.1 GBNF dynamique + prompt builder (ADR-007/008)
+  - 19.2 Micro unique global (ToolbarMic, TranscriptPreview, dictationStore)
+  - 19.3 Classification & Fusion LLM (classify_and_merge, DB queries, 7 tests)
+  - 19.4 Review Panel inline (TODO)
 
 ### V2 — Phase 4 Implementation (COMPLETE)
 
@@ -180,66 +175,27 @@ npx tsc --noEmit
 
 ## Session Log
 
-| Date | Action | Fichiers |
-|------|--------|----------|
-| 2026-01-26 | Initialisation CLAUDE.md | `CLAUDE.md` |
-| 2026-01-26 | Complétion PRD (34 FRs, 13 NFRs) | `prd.md` |
-| 2026-01-26 | Architecture steps 1-6 complétés | `architecture.md` |
-| 2026-01-26 | Architecture step 7 validation finale ✅ | `architecture.md` |
-| 2026-01-26 | Epics & Stories créés (6 epics, 25 stories) ✅ | `epics.md` |
-| 2026-01-27 | Story 1.1 : Tauri + React + Tailwind + SQLite initialisés | `src-tauri/`, `package.json` |
-| 2026-01-27 | Rust 1.93.0 installé, Tailwind v4 fix (`@tailwindcss/postcss`) | `postcss.config.js` |
-| 2026-01-27 | Story 1.1 complétée : structure base + store + types | `src/stores/`, `src/types/` |
-| 2026-01-27 | Stories 1.2-1.3 : CRUD élèves + liste + SQLite connecté | `src/components/` |
-| 2026-01-27 | Epic 4 : Résumé hebdo + Export JSON | `WeeklySummary.tsx`, `ExportButton.tsx` |
-| 2026-01-27 | Epic 5 : Mode TBI plein écran (F11) | `TBIView.tsx`, `App.tsx` |
-| 2026-01-27 | Epic 6 : Tray, raccourci global, autostart | `lib.rs`, `Settings.tsx` |
-| 2026-01-27 | Sanction directe + reset avertissements + emoji 🙁 | `studentStore.ts`, composants |
-| 2026-01-28 | Epic 8 : Grille cartes + ordre alphabétique fixe | `StudentGrid/`, `TBIView.tsx` |
-| 2026-01-28 | Epic 7 : Table daily_rewards + store rewards + UI ligne L-M-J-V | `lib.rs`, `studentStore.ts`, `WeeklyRewardLine.tsx` |
-| 2026-01-28 | Attribution auto 16h30 + annulation par sanction | `App.tsx`, `date.ts`, `studentStore.ts` |
-| 2026-01-28 | Sprint 4: Retrait avert. + mode liste + boutons adaptatifs | `StudentGridCard.tsx`, `StudentGrid.tsx`, `useWindowSize.ts` |
-| 2026-02-10 | Planning V2 complet (Product Brief, PRD, UX, Architecture, Epics, Implementation Readiness) | `_bmad-output/planning-artifacts/*-v2.md` |
-| 2026-02-10 | Résolution 7 issues critiques BMM (IC-1 à IC-7) | Tous docs V2 |
-| 2026-02-10 | Sprint Planning généré (36 stories, 8 epics) | `sprint-status.yaml` |
-| 2026-02-10 | Story 10.1 : Réorganisation modulaire V1→V2 | `src/modules/`, `src/shared/` |
-| 2026-02-10 | Story 10.2 : Migrations SQLite V2 (5 tables, seed data) | `src-tauri/src/lib.rs` |
-| 2026-02-10 | Story 10.3 SKIP (reprendre Sprint 3) | - |
-| 2026-02-10 | Workflow BMM V2 init : tag v1.0, archive V1, recherche technique + Perplexity | `bmm-workflow-status.yaml`, `research/` |
-| 2026-02-10 | Product Brief V2 (6 étapes collaboratives) | `product-brief-comportement-2026-02-10.md` |
-| 2026-02-10 | PRD V2 (57 FRs, 27 NFRs) + UX Design V2 (9 sections) — en parallèle | `prd-v2.md`, `ux-design-v2.md` |
-| 2026-02-10 | Architecture V2 (14 sections, 6 ADRs) + Epics V2 (8 epics, 35 stories) — en parallèle | `architecture-v2.md`, `epics-v2.md` |
-| 2026-02-10 | Implementation Readiness Check complété (7 issues critiques résolues) | `implementation-readiness-v2.md` |
-| 2026-02-12 | Story 10.4 : Navigation entre modules (Sidebar responsive) | `App.tsx`, `Sidebar.tsx`, `ModuleHeader.tsx` |
-| 2026-02-12 | Story 11.1 : Motifs sanctions obligatoires (radio buttons + modal 3e avertissement) | `SanctionReasonModal.tsx`, `StudentGridCard.tsx`, `studentStore.ts` |
-| 2026-02-12 | Story 11.2 : Gestion absences consolidée (bouton Absent + label ABS) | `WeeklyRewardLine.tsx`, `StudentGridCard.tsx` |
-| 2026-02-12 | Story 11.3 : Export JSON enrichi V2 (rewards + raison annulation) | `studentStore.ts`, `types/index.ts` |
-| 2026-02-12 | **Sprint 1 complété** (6/7 stories - Epic 10: 3/4, Epic 11: 3/3 COMPLET) | `sprint-status.yaml` |
-| 2026-02-12 | Story 13.1 : SidecarManager Rust (start/stop/status, pipeline séquentiel, events, 5 tests) | `src-tauri/src/sidecar/`, `lib.rs`, `Cargo.toml`, `tauri.conf.json`, `capabilities/` |
-| 2026-02-12 | Story 13.2 : whisper-server sidecar (binary compilé, modèle 465Mo, commande transcribe_audio, types TS) | `transcription.rs`, `types.rs`, `config.rs`, `Cargo.toml`, `scripts/setup-whisper.sh` |
-| 2026-02-12 | Story 13.3 : llama-server sidecar (Qwen 2.5 Coder 1.5B, grammaire GBNF, commande structure_text, 4 tests) | `structuration.rs`, `grammars/appreciation.gbnf`, `scripts/setup-llama.sh`, `mod.rs`, `lib.rs` |
-| 2026-02-12 | Story 13.4 : Pipeline séquentiel on-demand (auto-stop, détection RAM, mode concurrent optionnel, 5 tests) | `manager.rs`, `config.rs`, `types.rs`, `commands.rs`, `transcription.rs`, `structuration.rs`, `lib.rs` |
-| 2026-02-12 | Story 13.5 : Watchdog whisper-server (réponse vide→retry, healthcheck 3x, restart préventif 50 req) | `manager.rs`, `transcription.rs`, `types.rs` |
-| 2026-02-12 | Story 13.6 : Validateur Rust 4 couches (Layer 3 whitelist + Layer 4 prepared statements, 14 tests) | `validation/mod.rs`, `schema.rs`, `validator.rs`, `executor.rs`, `lib.rs`, `types/index.ts` |
-| 2026-02-12 | **Epic 13 COMPLET** (6/6 stories) — Sprint 2 : Epic 13 done, Epic 14 reste | `sprint-status.yaml` |
-| 2026-02-12 | Story 14.1 : Integration tauri-plugin-mic-recorder (package npm `tauri-plugin-mic-recorder-api`, hook useAudioRecorder, permissions, test component) | `Cargo.toml`, `package.json`, `capabilities/default.json`, `audio/mod.rs`, `useAudioRecorder.ts`, `AudioRecorderTest.tsx` |
-| 2026-02-12 | Story 14.2 : Fallback Web Audio API (getUserMedia, resample 16kHz, WAV builder, bascule auto Plan A→B, commande Rust save_wav_file) | `webAudioRecorder.ts`, `useAudioRecorder.ts`, `audio/mod.rs`, `lib.rs`, `AudioRecorderTest.tsx` |
-| 2026-02-13 | Story 10.3 : Configuration périodes scolaires (configStore, PeriodsSettings, PeriodSelector) | `configStore.ts`, `periodes.ts`, `PeriodsSettings.tsx`, `PeriodSelector.tsx`, `types/index.ts` |
-| 2026-02-13 | Story 12.1 : Fiche individuelle élève (2-panel layout, stats, navigation double-clic) | `StudentSummaryPanel.tsx`, `comportement-individuel/index.tsx`, `App.tsx` |
-| 2026-02-13 | Stories 12.2-12.4 : Incidents complets (saisie, historique, edit/delete, filtres) | `incidentStore.ts`, `IncidentForm.tsx`, `IncidentTabs.tsx` |
-| 2026-02-13 | Stories 14.3-14.5 : Pipeline audio déjà implémenté (VoiceDictation existant) | Vérifié, aucun code ajouté |
-| 2026-02-13 | Stories 15.1+15.4 : Tableau appréciations + saisie manuelle | `appreciationStore.ts`, `AppreciationTable.tsx`, `ManualEntryForm.tsx`, `apprentissage/index.tsx` |
-| 2026-02-13 | Story 15.2 : Pipeline LLM complet (useStructuration hook, invoke commands) | `useStructuration.ts`, `StructuredObservations.tsx`, `apprentissage/index.tsx` |
-| 2026-02-13 | Stories 15.3+15.5 : Résultat structuré + Domaines paramétrables | `DomainsSettings.tsx`, `Settings.tsx` |
-| 2026-02-13 | **Sprint 3 complété** (9/9 stories - Epic 12: 4/4, Epic 15: 5/5 + Story 10.3) | Build OK: 290KB JS, 31.5KB CSS |
-| 2026-02-17 | Epic 16 : Gestion modeles GGUF (detection, download, SHA256, USB install) | `models/checker.rs`, `downloader.rs`, `verifier.rs`, `installer.rs`, `ModelSetupWizard.tsx`, `DownloadProgress.tsx`, `UsbInstall.tsx`, `modelStore.ts` |
-| 2026-02-17 | Epic 17 : Polish (HelpSection, accessibilite TBI via useFullscreen hook, build config) | `HelpSection.tsx`, `useFullscreen.ts`, `Settings.tsx`, `StudentGridCard.tsx`, `StudentGrid.tsx` |
-| 2026-02-17 | **Sprint 4 complété** (8/9 stories code, 17.2=validation terrain) | Build OK: 305KB JS, 32KB CSS, 32 Rust tests |
-| 2026-02-17 | Fix dictée vocale : permission micro macOS, sidecar name resolution, retrait --vad | `Info.plist`, `Entitlements.plist`, `tauri.conf.json`, `config.rs`, `capabilities/default.json` |
-| 2026-02-17 | Epics & Stories V2.1 (4 epics 18-21, 15 stories, 17 FRs, 6 NFRs) | `epics-v2.1.md` |
-| 2026-02-17 | Brainstorming V2.1 + PRD V2.1 (65 FRs, 30 NFRs) | `brainstorming-session-2026-02-17.md`, `prd-v2.1.md` |
-| 2026-02-17 | Architecture V2.1 complétée (13 ADRs, 8 steps, validation OK) | `architecture-v2.1.md` |
-| 2026-02-22 | Story 18.4 : Echelle LSU 4 niveaux (NiveauLsu type, NIVEAUX_LSU constantes, store/UI migres) | `types/index.ts`, `appreciationStore.ts`, `AppreciationTable.tsx`, `ManualEntryForm.tsx` |
-| 2026-02-22 | **Epic 18 COMPLET** (4/4 stories) — Sprint 1 V2.1 done | `sprint-status.yaml` |
-| 2026-02-22 | Story 19.1 : GBNF dynamique + prompt builder (ADR-007/008, ctx-size 2048, 15 tests) | `gbnf.rs`, `prompt_builder.rs`, `config.rs`, `mod.rs` |
-| 2026-02-22 | Story 19.2 : Micro unique global (ToolbarMic, TranscriptPreview, dictationStore, suppression InlineDictation) | `dictationStore.ts`, `ToolbarMic.tsx`, `TranscriptPreview.tsx`, `AppreciationTable.tsx`, `apprentissage/index.tsx` |
+### V1 (26-28 jan 2026) — COMPLET
+
+Planning (PRD, Architecture, Epics) + Implementation (Epics 1-8) en 3 jours. Tag `v1.0`, archive dans `archive-v1/`.
+
+### V2 (10-17 fev 2026) — COMPLET
+
+| Phase | Dates | Resume |
+|-------|-------|--------|
+| Planning | 10 fev | Product Brief, PRD (57 FRs), UX Design, Architecture (6 ADRs), Epics (8 epics, 35 stories), Readiness Check |
+| Sprint 1 | 10-12 fev | Epic 10 (restructuration V1→V2) + Epic 11 (Module 1 evolutions) — 7/7 stories |
+| Sprint 2 | 12 fev | Epic 13 (sidecars Whisper+Llama, pipeline, watchdog, validateur 4 couches) + Epic 14 (audio capture) — 11/11 stories |
+| Sprint 3 | 13 fev | Story 10.3 (periodes) + Epic 12 (Module 2 incidents) + Epic 15 (Module 3 appreciations+LLM) — 9/9 stories |
+| Sprint 4 | 17 fev | Epic 16 (modeles GGUF) + Epic 17 (polish, TBI, build) — 8/9 stories (17.2=terrain) |
+| Fixes | 17 fev | Permission micro macOS, sidecar name resolution, retrait --vad |
+
+### V2.1 (17 fev → en cours)
+
+| Date | Action | Fichiers cles |
+|------|--------|---------------|
+| 2026-02-17 | Planning V2.1 complet (brainstorming, PRD 65 FRs, architecture 13 ADRs, epics 18-21) | `_bmad-output/planning-artifacts/*-v2.1.md` |
+| 2026-02-22 | Epic 18 COMPLET (4/4) : migrations V2.1, CRUD annee, niveaux PS-CM2, referentiel domaines, echelle LSU | `migrations/`, `annee.rs`, `types/index.ts`, `appreciationStore.ts` |
+| 2026-02-22 | Story 19.1 : GBNF dynamique + prompt builder (ADR-007/008, ctx-size 2048, 15 tests) | `gbnf.rs`, `prompt_builder.rs`, `config.rs` |
+| 2026-02-22 | Story 19.2 : Micro unique global toolbar (ToolbarMic, TranscriptPreview, dictationStore) | `dictationStore.ts`, `ToolbarMic.tsx`, `TranscriptPreview.tsx` |
+| 2026-02-22 | Story 19.3 : Classification & Fusion LLM (classify_and_merge, DB queries, GBNF+prompt, 7 tests) | `structuration.rs`, `types/index.ts`, `dictationStore.ts`, `TranscriptPreview.tsx`, `lib.rs` |

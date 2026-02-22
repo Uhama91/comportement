@@ -221,6 +221,7 @@ pub fn run() {
             sidecar::commands::set_pipeline_mode,
             sidecar::transcription::transcribe_audio,
             sidecar::structuration::structure_text,
+            sidecar::structuration::classify_and_merge,
             validation::validate_and_insert_observations,
             models::checker::check_models_status,
             models::downloader::download_models,

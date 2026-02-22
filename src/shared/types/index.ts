@@ -151,6 +151,16 @@ export interface StructurationResult {
   duration_ms: number;
 }
 
+// V2.1 — Classification + Fusion result (Story 19.3)
+export interface ClassificationResult {
+  domaine_id: number;
+  domaine_nom: string;
+  domaine_index: number;
+  observation_before: string | null;
+  observation_after: string;
+  duration_ms: number;
+}
+
 // Validation Layer 4 Result (Story 13.6)
 export interface InsertResult {
   success: boolean;
