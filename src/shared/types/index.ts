@@ -126,7 +126,18 @@ export interface PipelineConfig {
   concurrent_available: boolean;
 }
 
-// Structuration LLM Types
+// Echelle LSU 4 niveaux officiels (V2.1)
+export type NiveauLsu = 'non_atteints' | 'partiellement_atteints' | 'atteints' | 'depasses';
+
+export const NIVEAUX_LSU: Array<{ value: NiveauLsu | ''; label: string; color: string }> = [
+  { value: '',                      label: 'Non evalue',              color: 'text-slate-400' },
+  { value: 'non_atteints',          label: 'Non atteints',            color: 'text-red-600 bg-red-50' },
+  { value: 'partiellement_atteints', label: 'Partiellement atteints', color: 'text-amber-600 bg-amber-50' },
+  { value: 'atteints',              label: 'Atteints',                color: 'text-green-600 bg-green-50' },
+  { value: 'depasses',              label: 'Depasses',                color: 'text-blue-600 bg-blue-50' },
+];
+
+// Ancien type V2 — conserve pour retrocompat pipeline LLM
 export type NiveauAcquisition = 'maitrise' | 'en_cours_acquisition' | 'debut';
 
 export interface ObservationResult {

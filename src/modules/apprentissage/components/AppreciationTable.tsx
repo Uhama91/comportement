@@ -2,34 +2,22 @@ import { useEffect, useState } from 'react';
 import { useAppreciationStore, type Appreciation, type Domaine } from '../../../shared/stores/appreciationStore';
 import { useModelStore } from '../../../shared/stores/modelStore';
 import { InlineDictation } from './InlineDictation';
-import type { NiveauAcquisition } from '../../../shared/types';
+import { NIVEAUX_LSU, type NiveauLsu } from '../../../shared/types';
 
 interface AppreciationTableProps {
   eleveId: number;
   periodeId: number;
 }
 
-const NIVEAU_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Non evalue' },
-  { value: 'debut', label: 'Debut' },
-  { value: 'en_cours_acquisition', label: 'En cours d\'acquisition' },
-  { value: 'maitrise', label: 'Maitrise' },
-];
-
-const NIVEAU_COLORS: Record<string, string> = {
-  '': 'text-slate-400',
-  debut: 'text-red-600 bg-red-50',
-  en_cours_acquisition: 'text-amber-600 bg-amber-50',
-  maitrise: 'text-green-600 bg-green-50',
-};
+const NIVEAU_COLORS: Record<string, string> = Object.fromEntries(
+  NIVEAUX_LSU.map(n => [n.value, n.color])
+);
 
 export function AppreciationTable({ eleveId, periodeId }: AppreciationTableProps) {
-  const { domaines, appreciations, isLoading, loadDomaines, loadAppreciations, addAppreciation, updateAppreciation } = useAppreciationStore();
+  const { domaines, appreciations, isLoading, loadAppreciations, addAppreciation, updateAppreciation } = useAppreciationStore();
   const { whisperReady } = useModelStore();
 
-  useEffect(() => {
-    loadDomaines();
-  }, [loadDomaines]);
+  // Les domaines sont charges par le parent (apprentissage/index.tsx) avec le cycle de l'eleve
 
   useEffect(() => {
     if (periodeId) {
@@ -106,11 +94,11 @@ function DomainRow({
     eleveId: number;
     periodeId: number;
     domaineId: number;
-    niveau?: NiveauAcquisition | null;
+    niveauLsu?: NiveauLsu | null;
     observations?: string;
     texteDictation?: string;
   }) => Promise<boolean>;
-  onUpdateAppreciation: (id: number, data: { niveau?: NiveauAcquisition | null; observations?: string }) => Promise<void>;
+  onUpdateAppreciation: (id: number, data: { niveauLsu?: NiveauLsu | null; observations?: string }) => Promise<void>;
 }) {
   const [editingObs, setEditingObs] = useState(false);
   const [obsText, setObsText] = useState(appreciation?.observations || '');
@@ -121,11 +109,11 @@ function DomainRow({
   }, [appreciation]);
 
   const handleNiveauChange = async (value: string) => {
-    const niveau = value === '' ? null : value as NiveauAcquisition;
+    const niveauLsu = value === '' ? null : value as NiveauLsu;
     if (appreciation) {
-      await onUpdateAppreciation(appreciation.id, { niveau });
+      await onUpdateAppreciation(appreciation.id, { niveauLsu });
     } else {
-      await onAddAppreciation({ eleveId, periodeId, domaineId: domaine.id, niveau });
+      await onAddAppreciation({ eleveId, periodeId, domaineId: domaine.id, niveauLsu });
     }
   };
 
@@ -156,7 +144,7 @@ function DomainRow({
     }
   };
 
-  const niveauValue = appreciation?.niveau || '';
+  const niveauValue = appreciation?.niveauLsu || '';
   const niveauColor = NIVEAU_COLORS[niveauValue] || '';
 
   return (
@@ -168,7 +156,7 @@ function DomainRow({
           onChange={e => handleNiveauChange(e.target.value)}
           className={`text-xs px-2 py-1 border border-slate-200 rounded outline-none ${niveauColor}`}
         >
-          {NIVEAU_OPTIONS.map(o => (
+          {NIVEAUX_LSU.map(o => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>

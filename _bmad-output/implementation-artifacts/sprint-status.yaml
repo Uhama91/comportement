@@ -127,11 +127,11 @@ development_status:
   # Epic 18 : Annee Scolaire & Multi-niveaux
   # Fondation V2.1 — 8 migrations SQLite, annee scolaire, niveaux PS-CM2,
   # referentiel officiel domaines par cycle, echelle LSU 4 niveaux
-  epic-18: in-progress
+  epic-18: done
   18-1-migrations-sqlite-v2-vers-v2-1: done
   18-2-gestion-annee-scolaire: done
-  18-3-niveaux-scolaires-et-referentiel-domaines: ready-for-dev
-  18-4-echelle-lsu-4-niveaux: backlog
+  18-3-niveaux-scolaires-et-referentiel-domaines: done
+  18-4-echelle-lsu-4-niveaux: done
   epic-18-retrospective: optional
 
   # ============================================================

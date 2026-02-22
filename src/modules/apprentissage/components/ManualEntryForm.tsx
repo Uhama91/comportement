@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useAppreciationStore } from '../../../shared/stores/appreciationStore';
 import { useStudentStore } from '../../../shared/stores/studentStore';
 import { useConfigStore } from '../../../shared/stores/configStore';
-import type { NiveauAcquisition } from '../../../shared/types';
+import { NIVEAUX_LSU, type NiveauLsu } from '../../../shared/types';
 
 interface ManualEntryFormProps {
   defaultEleveId?: number;
@@ -10,13 +10,6 @@ interface ManualEntryFormProps {
   onClose: () => void;
   onSaved: () => void;
 }
-
-const NIVEAU_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '', label: 'Non evalue' },
-  { value: 'debut', label: 'Debut' },
-  { value: 'en_cours_acquisition', label: 'En cours d\'acquisition' },
-  { value: 'maitrise', label: 'Maitrise' },
-];
 
 export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onSaved }: ManualEntryFormProps) {
   const { students } = useStudentStore();
@@ -49,7 +42,7 @@ export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onS
         eleveId,
         periodeId,
         domaineId,
-        niveau: (niveau || null) as NiveauAcquisition | null,
+        niveauLsu: (niveau || null) as NiveauLsu | null,
         observations: observations.trim() || undefined,
       });
       if (success) {
@@ -129,7 +122,7 @@ export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onS
               onChange={e => setNiveau(e.target.value)}
               className="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg bg-white outline-none"
             >
-              {NIVEAU_OPTIONS.map(o => (
+              {NIVEAUX_LSU.map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}
             </select>

@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import Database from '@tauri-apps/plugin-sql';
-import type { NiveauAcquisition } from '../types';
+import type { NiveauAcquisition, NiveauLsu } from '../types';
 import { DOMAINES_OFFICIELS, getDomaineNamesForCycle, type CycleNumber } from '../types/domaines-officiels';
 
 export interface Domaine {
@@ -21,6 +21,7 @@ export interface Appreciation {
   domaineName?: string;
   dateEvaluation: string | null;
   niveau: NiveauAcquisition | null;
+  niveauLsu: NiveauLsu | null;
   observations: string | null;
   texteDictation: string | null;
   createdAt: string;
@@ -40,13 +41,13 @@ interface AppreciationStore {
     eleveId: number;
     periodeId: number;
     domaineId: number;
-    niveau?: NiveauAcquisition | null;
+    niveauLsu?: NiveauLsu | null;
     observations?: string;
     texteDictation?: string;
   }) => Promise<boolean>;
 
   updateAppreciation: (id: number, data: {
-    niveau?: NiveauAcquisition | null;
+    niveauLsu?: NiveauLsu | null;
     observations?: string;
   }) => Promise<void>;
 
@@ -55,7 +56,7 @@ interface AppreciationStore {
     eleveId: number;
     periodeId: number;
     domaineId: number;
-    niveau: NiveauAcquisition | null;
+    niveauLsu: NiveauLsu | null;
     observations: string;
     texteDictation?: string;
   }>) => Promise<boolean>;
@@ -176,6 +177,7 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
           d.nom as domaineName,
           a.date_evaluation as dateEvaluation,
           a.niveau,
+          a.niveau_lsu as niveauLsu,
           a.observations,
           a.texte_dictation as texteDictation,
           a.created_at as createdAt
@@ -196,13 +198,13 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
     try {
       const db = await getDb();
       await db.execute(
-        `INSERT INTO appreciations (eleve_id, periode_id, domaine_id, date_evaluation, niveau, observations, texte_dictation)
+        `INSERT INTO appreciations (eleve_id, periode_id, domaine_id, date_evaluation, niveau_lsu, observations, texte_dictation)
          VALUES ($1, $2, $3, date('now'), $4, $5, $6)`,
         [
           data.eleveId,
           data.periodeId,
           data.domaineId,
-          data.niveau || null,
+          data.niveauLsu || null,
           data.observations || null,
           data.texteDictation || null,
         ]
@@ -223,8 +225,8 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
       if (!appreciation) return;
 
       await db.execute(
-        `UPDATE appreciations SET niveau = $1, observations = $2 WHERE id = $3`,
-        [data.niveau ?? null, data.observations ?? null, id]
+        `UPDATE appreciations SET niveau_lsu = $1, observations = $2 WHERE id = $3`,
+        [data.niveauLsu ?? null, data.observations ?? null, id]
       );
       await get().loadAppreciations(appreciation.eleveId, appreciation.periodeId);
     } catch (error) {
@@ -238,9 +240,9 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
       const db = await getDb();
       for (const item of items) {
         await db.execute(
-          `INSERT INTO appreciations (eleve_id, periode_id, domaine_id, date_evaluation, niveau, observations, texte_dictation)
+          `INSERT INTO appreciations (eleve_id, periode_id, domaine_id, date_evaluation, niveau_lsu, observations, texte_dictation)
            VALUES ($1, $2, $3, date('now'), $4, $5, $6)`,
-          [item.eleveId, item.periodeId, item.domaineId, item.niveau || null, item.observations, item.texteDictation || null]
+          [item.eleveId, item.periodeId, item.domaineId, item.niveauLsu || null, item.observations, item.texteDictation || null]
         );
       }
       if (items.length > 0) {
