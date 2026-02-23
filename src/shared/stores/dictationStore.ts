@@ -3,7 +3,7 @@
 
 import { create } from 'zustand';
 import { invoke } from '@tauri-apps/api/core';
-import type { ClassificationResult } from '../types';
+import type { ClassificationResults } from '../types';
 
 export type DictationState = 'idle' | 'recording' | 'processing' | 'done' | 'classifying' | 'classified' | 'error';
 
@@ -13,7 +13,7 @@ interface DictationStoreState {
   error: string | null;
   eleveId: number | null;
   periodeId: number | null;
-  classificationResult: ClassificationResult | null;
+  classificationResults: ClassificationResults | null;
 
   setState: (state: DictationState) => void;
   setTranscribedText: (text: string) => void;
@@ -29,7 +29,7 @@ export const useDictationStore = create<DictationStoreState>((set, get) => ({
   error: null,
   eleveId: null,
   periodeId: null,
-  classificationResult: null,
+  classificationResults: null,
 
   setState: (state) => set({ state }),
   setTranscribedText: (text) => set({ transcribedText: text }),
@@ -47,12 +47,12 @@ export const useDictationStore = create<DictationStoreState>((set, get) => ({
     set({ state: 'classifying', error: null });
 
     try {
-      const result = await invoke<ClassificationResult>('classify_and_merge', {
+      const results = await invoke<ClassificationResults>('classify_and_merge', {
         text: transcribedText,
         eleveId,
         periodeId,
       });
-      set({ state: 'classified', classificationResult: result });
+      set({ state: 'classified', classificationResults: results });
     } catch (e) {
       set({ state: 'error', error: String(e) });
     }
@@ -62,6 +62,6 @@ export const useDictationStore = create<DictationStoreState>((set, get) => ({
     state: 'idle',
     transcribedText: '',
     error: null,
-    classificationResult: null,
+    classificationResults: null,
   }),
 }));

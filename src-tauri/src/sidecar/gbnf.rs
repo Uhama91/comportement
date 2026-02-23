@@ -1,10 +1,11 @@
 /// Dynamic GBNF grammar generation for LLM classification (ADR-007)
 ///
 /// Generates a GBNF grammar per-request from the active domains of the student's cycle.
-/// The grammar constrains the LLM output to a JSON object with:
+/// The grammar constrains the LLM output to a JSON **array** of results, each with:
 /// - `domaine_id`: integer index 0..N-1 matching active domains
 /// - `observation_mise_a_jour`: non-empty string with the merged observation
 ///
+/// This allows multi-domain classification in a single LLM call.
 /// The grammar string is passed in the API request body (not via `--grammar-file`).
 
 /// Domain info needed for GBNF generation
@@ -16,11 +17,11 @@ pub struct DomainInfo {
 
 /// Generate a dynamic GBNF grammar string from active domains.
 ///
-/// The generated grammar constrains the LLM to produce exactly:
+/// The generated grammar constrains the LLM to produce a JSON array:
 /// ```json
-/// {"domaine_id": N, "observation_mise_a_jour": "texte non vide"}
+/// [{"domaine_id": N, "observation_mise_a_jour": "texte"}, ...]
 /// ```
-/// where N is an integer in 0..domains.len()-1.
+/// where N is an integer in 0..domains.len()-1. The array contains 1..N results.
 pub fn generate_gbnf(domains: &[DomainInfo]) -> String {
     assert!(!domains.is_empty(), "Au moins un domaine requis pour generer la grammaire GBNF");
 
@@ -31,7 +32,8 @@ pub fn generate_gbnf(domains: &[DomainInfo]) -> String {
     let domain_id_rule = domain_id_alts.join(" | ");
 
     format!(
-        r#"root ::= "{{" ws "\"domaine_id\":" ws domaine-id "," ws "\"observation_mise_a_jour\":" ws string "}}"
+        r#"root ::= "[" ws result (ws "," ws result)* ws "]"
+result ::= "{{" ws "\"domaine_id\":" ws domaine-id "," ws "\"observation_mise_a_jour\":" ws string ws "}}"
 domaine-id ::= {domain_id_rule}
 ws ::= [ \t\n]*
 string ::= "\"" chars "\""
@@ -54,6 +56,9 @@ mod tests {
         assert!(grammar.contains("domaine-id ::= \"0\""));
         assert!(grammar.contains("observation_mise_a_jour"));
         assert!(grammar.contains("root ::="));
+        // Array format
+        assert!(grammar.contains("["));
+        assert!(grammar.contains("result"));
     }
 
     #[test]
@@ -100,12 +105,24 @@ mod tests {
             DomainInfo { id: 20, nom: "Mathematiques".to_string() },
         ];
         let grammar = generate_gbnf(&domains);
-        // Verify structure: root, domaine-id, ws, string, chars, char, escape rules
+        // Verify structure: root (array), result, domaine-id, ws, string, chars, char, escape rules
         assert!(grammar.contains("root ::="));
+        assert!(grammar.contains("result ::="));
         assert!(grammar.contains("domaine-id ::="));
         assert!(grammar.contains("ws ::="));
         assert!(grammar.contains("string ::="));
         assert!(grammar.contains("char ::="));
         assert!(grammar.contains("escape ::="));
+    }
+
+    #[test]
+    fn generate_gbnf_array_allows_multiple_results() {
+        let domains = vec![
+            DomainInfo { id: 1, nom: "Francais".to_string() },
+            DomainInfo { id: 2, nom: "Mathematiques".to_string() },
+        ];
+        let grammar = generate_gbnf(&domains);
+        // Root should allow comma-separated results
+        assert!(grammar.contains(r#"(ws "," ws result)*"#));
     }
 }

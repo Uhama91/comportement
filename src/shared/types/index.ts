@@ -151,13 +151,17 @@ export interface StructurationResult {
   duration_ms: number;
 }
 
-// V2.1 — Classification + Fusion result (Story 19.3)
-export interface ClassificationResult {
+// V2.1 — Classification + Fusion result (Story 19.3, multi-domain)
+export interface ClassificationResultItem {
   domaine_id: number;
   domaine_nom: string;
   domaine_index: number;
   observation_before: string | null;
   observation_after: string;
+}
+
+export interface ClassificationResults {
+  items: ClassificationResultItem[];
   duration_ms: number;
 }
 

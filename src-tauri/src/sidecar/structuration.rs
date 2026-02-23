@@ -235,20 +235,26 @@ pub async fn structure_text(
 
 // ─── V2.1 — Classification + Fusion (Story 19.3) ───
 
-/// Result of a classification+fusion request (V2.1)
+/// Single item in a classification+fusion response (V2.1)
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ClassificationResult {
+pub struct ClassificationResultItem {
     pub domaine_id: i64,
     pub domaine_nom: String,
     pub domaine_index: usize,
     pub observation_before: Option<String>,
     pub observation_after: String,
+}
+
+/// Full classification response with all items (V2.1 multi-domain)
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ClassificationResults {
+    pub items: Vec<ClassificationResultItem>,
     pub duration_ms: u64,
 }
 
-/// Raw LLM response for classification (V2.1 GBNF)
+/// Raw LLM response item for classification (V2.1 GBNF)
 #[derive(Debug, Deserialize)]
-struct LlmClassification {
+struct LlmClassificationItem {
     domaine_id: usize,
     observation_mise_a_jour: String,
 }
@@ -360,12 +366,13 @@ async fn load_existing_observations(
     .map_err(|e| SidecarError::Internal(format!("Requete observations echouee: {}", e)))
 }
 
-/// Send a classification request to llama-server with dynamic GBNF grammar
+/// Send a classification request to llama-server with dynamic GBNF grammar.
+/// Returns a Vec of classification items (multi-domain support).
 async fn send_classification_request(
     system_prompt: &str,
     user_prompt: &str,
     grammar: &str,
-) -> Result<LlmClassification, SidecarError> {
+) -> Result<Vec<LlmClassificationItem>, SidecarError> {
     let body = serde_json::json!({
         "model": "qwen2.5-coder",
         "messages": [
@@ -373,7 +380,7 @@ async fn send_classification_request(
             { "role": "user", "content": user_prompt }
         ],
         "temperature": 0.1,
-        "max_tokens": 256,
+        "max_tokens": 512,
         "grammar": grammar
     });
 
@@ -410,39 +417,45 @@ async fn send_classification_request(
         .map(|c| c.message.content.as_str())
         .unwrap_or("");
 
-    let classification: LlmClassification = serde_json::from_str(content).map_err(|e| {
+    let items: Vec<LlmClassificationItem> = serde_json::from_str(content).map_err(|e| {
         SidecarError::Internal(format!(
-            "JSON classification invalide: {}. Contenu: {}",
+            "JSON classification invalide (attendu: tableau): {}. Contenu: {}",
             e, content
         ))
     })?;
 
-    Ok(classification)
+    if items.is_empty() {
+        return Err(SidecarError::Internal(
+            "Le LLM a retourne un tableau vide".to_string(),
+        ));
+    }
+
+    Ok(items)
 }
 
-/// Validate a classification result from the LLM
-fn validate_classification(
-    classification: &LlmClassification,
+/// Validate a single classification item from the LLM
+fn validate_classification_item(
+    item: &LlmClassificationItem,
     domain_count: usize,
 ) -> Result<(), SidecarError> {
-    if classification.domaine_id >= domain_count {
+    if item.domaine_id >= domain_count {
         return Err(SidecarError::Internal(format!(
             "domaine_id {} hors range (0..{})",
-            classification.domaine_id,
+            item.domaine_id,
             domain_count - 1
         )));
     }
 
-    let obs = classification.observation_mise_a_jour.trim();
+    let obs = item.observation_mise_a_jour.trim();
     if obs.is_empty() {
         return Err(SidecarError::Internal(
             "observation_mise_a_jour vide".to_string(),
         ));
     }
 
-    if obs.len() > 300 {
+    if obs.len() > 500 {
         return Err(SidecarError::Internal(format!(
-            "observation_mise_a_jour trop longue ({} chars, max 300)",
+            "observation_mise_a_jour trop longue ({} chars, max 500)",
             obs.len()
         )));
     }
@@ -450,16 +463,16 @@ fn validate_classification(
     Ok(())
 }
 
-/// Classify dictated text into a domain and merge with existing observations (V2.1).
+/// Classify dictated text into one or more domains and merge with existing observations (V2.1).
 ///
 /// Pipeline:
 /// 1. Load active domains for the student's cycle from DB
 /// 2. Load existing observations for the student/period
-/// 3. Generate dynamic GBNF grammar (ADR-007)
-/// 4. Build adaptive prompt (ADR-008)
+/// 3. Generate dynamic GBNF grammar (ADR-007) — array format
+/// 4. Build adaptive prompt (ADR-008) — multi-domain + error correction
 /// 5. Start llama-server if needed
 /// 6. Send request with grammar constraint
-/// 7. Parse, validate, and return ClassificationResult
+/// 7. Parse, validate each item, and return ClassificationResults
 /// 8. Auto-stop llama (ADR-002)
 #[tauri::command]
 pub async fn classify_and_merge(
@@ -468,7 +481,7 @@ pub async fn classify_and_merge(
     text: String,
     eleve_id: i64,
     periode_id: i64,
-) -> Result<ClassificationResult, String> {
+) -> Result<ClassificationResults, String> {
     let start = Instant::now();
 
     // Step 1: Open DB and load domains
@@ -528,8 +541,8 @@ pub async fn classify_and_merge(
             .map_err(|e| e.to_string())?;
     }
 
-    // Step 6: Send classification request
-    let classification = send_classification_request(
+    // Step 6: Send classification request (returns Vec)
+    let classification_items = send_classification_request(
         &prompt_result.system_prompt,
         &prompt_result.user_prompt,
         &grammar,
@@ -540,29 +553,35 @@ pub async fn classify_and_merge(
     // Increment request count
     state.increment_request_count(SidecarName::Llama).await;
 
-    // Step 7: Validate
-    validate_classification(&classification, domains.len()).map_err(|e| e.to_string())?;
+    // Step 7: Validate each item and build results
+    let mut items: Vec<ClassificationResultItem> = Vec::new();
+    for item in &classification_items {
+        validate_classification_item(item, domains.len()).map_err(|e| e.to_string())?;
 
-    // Map index → real domain
-    let domain = &domains[classification.domaine_id];
-    let observation_before = obs_map.get(&domain.id).cloned();
+        let domain = &domains[item.domaine_id];
+        let observation_before = obs_map.get(&domain.id).cloned();
+
+        items.push(ClassificationResultItem {
+            domaine_id: domain.id,
+            domaine_nom: domain.nom.clone(),
+            domaine_index: item.domaine_id,
+            observation_before,
+            observation_after: item.observation_mise_a_jour.trim().to_string(),
+        });
+    }
 
     let duration_ms = start.elapsed().as_millis() as u64;
 
     info!(
-        "Classification terminee en {}ms: domaine={} (index={}) pour eleve_id={}",
-        duration_ms, domain.nom, classification.domaine_id, eleve_id
+        "Classification terminee en {}ms: {} domaine(s) pour eleve_id={}",
+        duration_ms, items.len(), eleve_id
     );
 
     // Step 8: Auto-stop llama (ADR-002)
     state.auto_stop_after_task(&app, SidecarName::Llama).await;
 
-    Ok(ClassificationResult {
-        domaine_id: domain.id,
-        domaine_nom: domain.nom.clone(),
-        domaine_index: classification.domaine_id,
-        observation_before,
-        observation_after: classification.observation_mise_a_jour.trim().to_string(),
+    Ok(ClassificationResults {
+        items,
         duration_ms,
     })
 }
@@ -613,73 +632,83 @@ mod tests {
         assert_eq!(llm.observations[0].niveau, "debut");
     }
 
-    // ─── V2.1 Classification tests ───
+    // ─── V2.1 Classification tests (multi-domain) ───
 
     #[test]
-    fn parse_classification_json() {
-        let json = r#"{"domaine_id": 2, "observation_mise_a_jour": "L'eleve progresse en calcul mental et maitrise les tables."}"#;
-        let result: LlmClassification = serde_json::from_str(json).unwrap();
-        assert_eq!(result.domaine_id, 2);
-        assert!(result.observation_mise_a_jour.contains("calcul mental"));
+    fn parse_classification_array_single() {
+        let json = r#"[{"domaine_id": 2, "observation_mise_a_jour": "L'eleve progresse en calcul mental."}]"#;
+        let result: Vec<LlmClassificationItem> = serde_json::from_str(json).unwrap();
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].domaine_id, 2);
+        assert!(result[0].observation_mise_a_jour.contains("calcul mental"));
+    }
+
+    #[test]
+    fn parse_classification_array_multi() {
+        let json = r#"[{"domaine_id": 0, "observation_mise_a_jour": "Bonne lecture."}, {"domaine_id": 5, "observation_mise_a_jour": "Progresse en sport."}]"#;
+        let result: Vec<LlmClassificationItem> = serde_json::from_str(json).unwrap();
+        assert_eq!(result.len(), 2);
+        assert_eq!(result[0].domaine_id, 0);
+        assert_eq!(result[1].domaine_id, 5);
     }
 
     #[test]
     fn reject_invalid_domaine_id() {
-        let classification = LlmClassification {
+        let item = LlmClassificationItem {
             domaine_id: 10,
             observation_mise_a_jour: "Texte valide".to_string(),
         };
-        let err = validate_classification(&classification, 5);
+        let err = validate_classification_item(&item, 5);
         assert!(err.is_err());
         assert!(err.unwrap_err().to_string().contains("hors range"));
     }
 
     #[test]
     fn reject_empty_observation() {
-        let classification = LlmClassification {
+        let item = LlmClassificationItem {
             domaine_id: 0,
             observation_mise_a_jour: "   ".to_string(),
         };
-        let err = validate_classification(&classification, 5);
+        let err = validate_classification_item(&item, 5);
         assert!(err.is_err());
         assert!(err.unwrap_err().to_string().contains("vide"));
     }
 
     #[test]
     fn reject_too_long_observation() {
-        let classification = LlmClassification {
+        let item = LlmClassificationItem {
             domaine_id: 0,
-            observation_mise_a_jour: "A".repeat(301),
+            observation_mise_a_jour: "A".repeat(501),
         };
-        let err = validate_classification(&classification, 5);
+        let err = validate_classification_item(&item, 5);
         assert!(err.is_err());
         assert!(err.unwrap_err().to_string().contains("trop longue"));
     }
 
     #[test]
-    fn accept_valid_classification() {
-        let classification = LlmClassification {
+    fn accept_valid_classification_item() {
+        let item = LlmClassificationItem {
             domaine_id: 3,
             observation_mise_a_jour: "Bonne participation en histoire.".to_string(),
         };
-        assert!(validate_classification(&classification, 9).is_ok());
+        assert!(validate_classification_item(&item, 9).is_ok());
     }
 
     #[test]
     fn accept_boundary_domaine_id() {
         // domaine_id = N-1 should be valid
-        let classification = LlmClassification {
+        let item = LlmClassificationItem {
             domaine_id: 4,
             observation_mise_a_jour: "OK".to_string(),
         };
-        assert!(validate_classification(&classification, 5).is_ok());
+        assert!(validate_classification_item(&item, 5).is_ok());
     }
 
     #[test]
     fn parse_classification_with_escaped_chars() {
-        let json = r#"{"domaine_id": 0, "observation_mise_a_jour": "L'eleve a dit \"bonjour\" et travaille bien."}"#;
-        let result: LlmClassification = serde_json::from_str(json).unwrap();
-        assert_eq!(result.domaine_id, 0);
-        assert!(result.observation_mise_a_jour.contains("bonjour"));
+        let json = r#"[{"domaine_id": 0, "observation_mise_a_jour": "L'eleve a dit \"bonjour\" et travaille bien."}]"#;
+        let result: Vec<LlmClassificationItem> = serde_json::from_str(json).unwrap();
+        assert_eq!(result[0].domaine_id, 0);
+        assert!(result[0].observation_mise_a_jour.contains("bonjour"));
     }
 }

@@ -25,8 +25,8 @@ pub struct PromptBuilderResult {
 
 // Token budget constants (ADR-008)
 const CTX_SIZE: usize = 2048;
-const OUTPUT_RESERVE: usize = 150;
-const INPUT_BUDGET: usize = CTX_SIZE - OUTPUT_RESERVE; // ~1898 tokens
+const OUTPUT_RESERVE: usize = 300; // Increased for multi-domain array output
+const INPUT_BUDGET: usize = CTX_SIZE - OUTPUT_RESERVE; // ~1748 tokens
 const CHARS_PER_TOKEN: usize = 4; // ~1 token per 4 chars in French
 
 // Truncation thresholds
@@ -34,13 +34,17 @@ const MAX_OBS_CHARS_TRUNCATED: usize = 200;
 
 const SYSTEM_PROMPT_BASE: &str = r#"Tu es un assistant pedagogique pour une ecole elementaire.
 Tu recois une observation dictee par l'enseignant et tu dois :
-1. Identifier le domaine d'apprentissage vise parmi la liste fournie
-2. Fusionner l'observation avec le texte existant du domaine (si present)
-Tu reponds UNIQUEMENT en JSON au format : {"domaine_id": N, "observation_mise_a_jour": "texte"}
+1. Corriger les fautes de transcription (orthographe, grammaire, mots mal transcrits par la dictee vocale)
+2. Identifier TOUS les domaines d'apprentissage mentionnes dans la dictee
+3. Pour chaque domaine identifie, fusionner l'observation avec le texte existant (si present)
+4. Reecrire chaque observation de maniere claire et professionnelle
+Tu reponds UNIQUEMENT en JSON au format tableau : [{"domaine_id": N, "observation_mise_a_jour": "texte"}, ...]
 - domaine_id : index du domaine (commence a 0)
-- observation_mise_a_jour : texte fusionne (existant + nouveau), coherent et concis
+- observation_mise_a_jour : texte corrige et fusionne (existant + nouveau), coherent et concis
+Si la dictee mentionne plusieurs domaines, retourne UN element par domaine.
+Si un seul domaine est mentionne, retourne un tableau avec un seul element.
 Si le domaine a deja une observation, integre le nouveau texte naturellement.
-Si pas d'observation existante, utilise directement le texte dicte."#;
+Si pas d'observation existante, utilise directement le texte dicte (corrige)."#;
 
 fn estimate_tokens(text: &str) -> usize {
     (text.len() + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN
@@ -292,6 +296,7 @@ mod tests {
         // Short observations should NOT be truncated
         assert!(result.system_prompt.contains("Court."));
         assert!(result.system_prompt.contains("Aussi court."));
-        assert!(!result.system_prompt.contains("..."));
+        // Should not contain the truncation marker section
+        assert!(!result.system_prompt.contains("resumees"));
     }
 }
