@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Cahier body - rounded -->
+  <rect x="96" y="56" width="320" height="400" rx="32" ry="32" fill="#4F6DF5" />
+
+  <!-- Inner page - white with rounded corners -->
+  <rect x="128" y="88" width="268" height="336" rx="20" ry="20" fill="#FFFFFF" />
+
+  <!-- Lines (style cahier) -->
+  <line x1="160" y1="168" x2="364" y2="168" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" />
+  <line x1="160" y1="216" x2="364" y2="216" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" />
+  <line x1="160" y1="264" x2="364" y2="264" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" />
+  <line x1="160" y1="312" x2="364" y2="312" stroke="#CBD5E1" stroke-width="3" stroke-linecap="round" />
+
+  <!-- Spine / binding left side -->
+  <rect x="96" y="56" width="20" height="400" rx="10" ry="10" fill="#3B5BDB" />
+</svg>

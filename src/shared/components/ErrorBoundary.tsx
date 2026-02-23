@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
               <div className="bg-amber-50 border border-amber-200 rounded p-3 mb-4 text-left text-xs">
                 <p className="font-medium text-amber-800 mb-1">Solutions :</p>
                 <ol className="text-amber-700 list-decimal ml-4 space-y-1">
-                  <li>Cliquez sur l'icône Comportement dans la barre des tâches</li>
+                  <li>Cliquez sur l'icône MonCahier dans la barre des tâches</li>
                   <li>Ou fermez complètement l'application et relancez</li>
                   <li>Ou redémarrez l'ordinateur</li>
                 </ol>
