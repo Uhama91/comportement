@@ -366,6 +366,57 @@ async fn load_existing_observations(
     .map_err(|e| SidecarError::Internal(format!("Requete observations echouee: {}", e)))
 }
 
+/// Recover valid items from truncated JSON array.
+/// The LLM sometimes exceeds max_tokens, producing truncated JSON like:
+///   [{"domaine_id": 0, "observation_mise_a_jour": "text"}, {"domaine_id": 1, "observ
+/// This function finds the last complete `}` and closes the array with `]`.
+fn recover_truncated_json(content: &str) -> Option<Vec<LlmClassificationItem>> {
+    // Find the last complete item (ends with `}`)
+    let mut last_valid_end = None;
+    let mut depth = 0;
+    let mut in_string = false;
+    let mut escape_next = false;
+
+    for (i, ch) in content.char_indices() {
+        if escape_next {
+            escape_next = false;
+            continue;
+        }
+        if ch == '\\' && in_string {
+            escape_next = true;
+            continue;
+        }
+        if ch == '"' {
+            in_string = !in_string;
+            continue;
+        }
+        if in_string {
+            continue;
+        }
+        match ch {
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    last_valid_end = Some(i);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    let end = last_valid_end?;
+    // Build valid JSON: everything up to and including the last `}`, then close array
+    let partial = &content[..=end];
+    // Ensure it starts with `[`
+    let trimmed = partial.trim_start();
+    if !trimmed.starts_with('[') {
+        return None;
+    }
+    let json_str = format!("{}]", partial.trim_end().trim_end_matches(','));
+    serde_json::from_str(&json_str).ok()
+}
+
 /// Send a classification request to llama-server with dynamic GBNF grammar.
 /// Returns a Vec of classification items (multi-domain support).
 async fn send_classification_request(
@@ -380,7 +431,7 @@ async fn send_classification_request(
             { "role": "user", "content": user_prompt }
         ],
         "temperature": 0.1,
-        "max_tokens": 1024,
+        "max_tokens": 768,
         "grammar": grammar
     });
 
@@ -417,12 +468,28 @@ async fn send_classification_request(
         .map(|c| c.message.content.as_str())
         .unwrap_or("");
 
-    let items: Vec<LlmClassificationItem> = serde_json::from_str(content).map_err(|e| {
-        SidecarError::Internal(format!(
-            "JSON classification invalide (attendu: tableau): {}. Contenu: {}",
-            e, content
-        ))
-    })?;
+    // Try direct parse first; if truncated, recover partial JSON
+    let items: Vec<LlmClassificationItem> = match serde_json::from_str(content) {
+        Ok(v) => v,
+        Err(_) => {
+            // JSON likely truncated by max_tokens — recover valid items
+            match recover_truncated_json(content) {
+                Some(recovered) => {
+                    info!(
+                        "JSON LLM tronque, {} item(s) recupere(s) sur reponse partielle",
+                        recovered.len()
+                    );
+                    recovered
+                }
+                None => {
+                    return Err(SidecarError::Internal(format!(
+                        "JSON classification invalide (attendu: tableau): Contenu: {}",
+                        &content[..content.len().min(200)]
+                    )));
+                }
+            }
+        }
+    };
 
     if items.is_empty() {
         return Err(SidecarError::Internal(
@@ -434,7 +501,7 @@ async fn send_classification_request(
 }
 
 /// Max chars for an observation — truncate (don't reject) if exceeded
-const MAX_OBSERVATION_CHARS: usize = 300;
+const MAX_OBSERVATION_CHARS: usize = 500;
 
 /// Validate a single classification item from the LLM.
 /// Returns the (possibly truncated) observation text.
@@ -489,17 +556,17 @@ fn domain_mentioned_in_text(domain_name: &str, text: &str) -> bool {
         return true;
     }
 
-    // Keyword aliases for common domains
+    // Keyword aliases for common domains (includes singular/plural variants)
     let keywords: &[(&str, &[&str])] = &[
         ("francais", &["francais", "français", "lecture", "ecriture", "écriture", "orthographe", "grammaire", "conjugaison", "vocabulaire", "dictee", "dictée", "rédaction", "redaction", "expression écrite", "expression ecrite", "compréhension", "comprehension"]),
         ("mathematiques", &["mathematiques", "mathématiques", "maths", "calcul", "géométrie", "geometrie", "numération", "numeration", "problèmes", "problemes", "multiplication", "division", "addition", "soustraction", "nombres"]),
         ("sciences", &["sciences", "science", "technologie", "vivant", "matière", "matiere", "énergie", "energie", "expérience", "experience"]),
         ("histoire", &["histoire", "géographie", "geographie", "géo", "geo", "carte", "chronologie", "époque", "epoque"]),
         ("enseignement moral", &["moral", "civique", "citoyen", "citoyenneté", "citoyennete", "respect", "règles", "regles", "débat", "debat", "laïcité", "laicite"]),
-        ("education physique", &["sport", "sportive", "physique", "eps", "course", "gymnastique", "natation", "athlétisme", "athletisme", "jeux"]),
-        ("arts plastiques", &["arts plastiques", "dessin", "peinture", "sculpture", "arts visuels"]),
-        ("education musicale", &["musique", "musicale", "chant", "instrument", "rythme"]),
-        ("langues vivantes", &["anglais", "langue", "langues", "english", "espagnol", "allemand"]),
+        ("education physique", &["sport", "sportive", "physique", "eps", "course", "gymnastique", "natation", "athlétisme", "athletisme", "jeux", "badminton", "basket", "football", "handball", "rugby", "natation", "escalade"]),
+        ("arts plastiques", &["art plastique", "arts plastiques", "plastique", "dessin", "peinture", "sculpture", "arts visuels", "art visuel", "collage", "modelage"]),
+        ("education musicale", &["musique", "musicale", "musical", "chant", "instrument", "rythme", "chorale"]),
+        ("langues vivantes", &["anglais", "langue vivante", "langues vivantes", "langue", "langues", "english", "espagnol", "allemand"]),
     ];
 
     for (domain_key, domain_keywords) in keywords {
@@ -752,7 +819,7 @@ mod tests {
 
     #[test]
     fn truncate_too_long_observation() {
-        let long_text = "Phrase un. ".repeat(50); // ~550 chars
+        let long_text = "Phrase un. ".repeat(80); // ~880 chars > 500
         let item = LlmClassificationItem {
             domaine_id: 0,
             observation_mise_a_jour: long_text,
@@ -828,6 +895,27 @@ mod tests {
     }
 
     #[test]
+    fn filter_detects_arts_plastiques_singular() {
+        assert!(domain_mentioned_in_text("Arts Plastiques", "En art plastique, il a bien travaillé."));
+        assert!(domain_mentioned_in_text("Arts Plastiques", "Le dessin est bon."));
+        assert!(!domain_mentioned_in_text("Arts Plastiques", "Il chante bien en musique."));
+    }
+
+    #[test]
+    fn filter_detects_education_musicale() {
+        assert!(domain_mentioned_in_text("Education Musicale", "En éducation musicale, il manque de participation."));
+        assert!(domain_mentioned_in_text("Education Musicale", "Il chante bien en musique."));
+        assert!(!domain_mentioned_in_text("Education Musicale", "Il dessine bien."));
+    }
+
+    #[test]
+    fn filter_detects_langues_vivantes_singular() {
+        assert!(domain_mentioned_in_text("Langues Vivantes", "En langue vivante, il progresse."));
+        assert!(domain_mentioned_in_text("Langues Vivantes", "L'anglais est bon."));
+        assert!(!domain_mentioned_in_text("Langues Vivantes", "Il court vite en sport."));
+    }
+
+    #[test]
     fn filter_keeps_custom_unknown_domains() {
         // Custom domains should always be kept (not filtered)
         assert!(domain_mentioned_in_text("Mon domaine custom", "Texte sans rapport."));
@@ -837,5 +925,46 @@ mod tests {
     fn filter_is_case_insensitive() {
         assert!(domain_mentioned_in_text("Francais", "en FRANÇAIS il progresse"));
         assert!(domain_mentioned_in_text("Sciences et Technologies", "En SCIENCE, c'est bien"));
+    }
+
+    // ─── JSON recovery tests ───
+
+    #[test]
+    fn recover_valid_json_returns_none() {
+        // Already valid JSON — recovery not needed (None because parse succeeds upstream)
+        let json = r#"[{"domaine_id": 0, "observation_mise_a_jour": "Texte."}]"#;
+        let result = recover_truncated_json(json);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().len(), 1);
+    }
+
+    #[test]
+    fn recover_truncated_mid_string() {
+        // Truncated in the middle of the second item's string
+        let json = r#"[{"domaine_id": 0, "observation_mise_a_jour": "Bon travail."}, {"domaine_id": 1, "observation_mise_a_jour": "Progresse en cal"#;
+        let result = recover_truncated_json(json);
+        assert!(result.is_some());
+        let items = result.unwrap();
+        assert_eq!(items.len(), 1); // Only first complete item
+        assert_eq!(items[0].domaine_id, 0);
+    }
+
+    #[test]
+    fn recover_truncated_after_complete_items() {
+        // Two complete items, third truncated
+        let json = r#"[{"domaine_id": 0, "observation_mise_a_jour": "A."}, {"domaine_id": 5, "observation_mise_a_jour": "B."}, {"domaine_id": 2, "obs"#;
+        let result = recover_truncated_json(json);
+        assert!(result.is_some());
+        let items = result.unwrap();
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[1].domaine_id, 5);
+    }
+
+    #[test]
+    fn recover_no_complete_items() {
+        let json = r#"[{"domaine_id": 0, "observation_mise_a_jo"#;
+        let result = recover_truncated_json(json);
+        // The `}` is never closed, so no valid items
+        assert!(result.is_none());
     }
 }

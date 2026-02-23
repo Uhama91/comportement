@@ -25,7 +25,7 @@ pub struct PromptBuilderResult {
 
 // Token budget constants (ADR-008)
 const CTX_SIZE: usize = 3072;
-const OUTPUT_RESERVE: usize = 1024; // max_tokens for multi-domain output
+const OUTPUT_RESERVE: usize = 768; // max_tokens for multi-domain output
 const INPUT_BUDGET: usize = CTX_SIZE - OUTPUT_RESERVE; // ~2048 tokens for prompt
 const CHARS_PER_TOKEN: usize = 4; // ~1 token per 4 chars in French
 
@@ -36,10 +36,12 @@ const SYSTEM_PROMPT_BASE: &str = r#"Assistant pedagogique. Classe la dictee dans
 Reponds en JSON : [{"domaine_id": N, "observation_mise_a_jour": "texte"}]
 
 REGLES :
-- Ne retourne QUE les domaines explicitement nommes dans la dictee. JAMAIS les autres.
-- Chaque observation : 1-2 phrases COURTES. JAMAIS recopier la dictee.
-- Corrige les fautes de transcription vocale.
-- Si observation existante : fusionne ancien + nouveau en 1-2 phrases."#;
+- Si la dictee mentionne PLUSIEURS domaines, cree un item SEPARE pour chaque domaine. Maximum 3 items.
+- UNIQUEMENT les domaines nommes ou clairement evoques dans la dictee.
+- Garde les details importants (points forts, difficultes, conseils). 2-3 phrases par domaine.
+- Chaque observation concerne UNIQUEMENT son domaine. Ne melange pas le contenu.
+- Corrige fautes de transcription. Style ecrit professionnel.
+- Si observation existante : fusionne ancien + nouveau."#;
 
 fn estimate_tokens(text: &str) -> usize {
     (text.len() + CHARS_PER_TOKEN - 1) / CHARS_PER_TOKEN

@@ -1,21 +1,31 @@
 // Story 19.2 + 19.3 + 19.4 — Transcript preview with multi-domain classification + editable observations
 // Shows transcribed text, classification progress, and per-domain editable cards with validate/reject
+// Includes manual "+" button to add missed domains
 
 import { useState, useCallback } from 'react';
 import { useDictationStore } from '../../../shared/stores/dictationStore';
 import { useAppreciationStore } from '../../../shared/stores/appreciationStore';
 import type { ClassificationResultItem } from '../../../shared/types';
 
+interface ManualItem {
+  domaineId: number;
+  text: string;
+}
+
 export function TranscriptPreview() {
   const { state, transcribedText, classificationResults, error, clear } =
     useDictationStore();
-  const { appreciations, addAppreciation, updateAppreciation, loadAppreciations } =
+  const { domaines, appreciations, addAppreciation, updateAppreciation, loadAppreciations } =
     useAppreciationStore();
   const [saving, setSaving] = useState(false);
   // Local editable observations: index → edited text
   const [editedTexts, setEditedTexts] = useState<Record<number, string>>({});
+  // Local edited domains: index → new domaine_id
+  const [editedDomains, setEditedDomains] = useState<Record<number, number>>({});
   // Removed items (by index)
   const [removedItems, setRemovedItems] = useState<Set<number>>(new Set());
+  // Manually added items (when LLM misses a domain)
+  const [manualItems, setManualItems] = useState<ManualItem[]>([]);
 
   const { eleveId, periodeId } = useDictationStore();
 
@@ -30,6 +40,17 @@ export function TranscriptPreview() {
     setEditedTexts((prev) => ({ ...prev, [index]: value }));
   }, []);
 
+  const handleChangeDomain = useCallback((index: number, newDomaineId: number) => {
+    setEditedDomains((prev) => ({ ...prev, [index]: newDomaineId }));
+  }, []);
+
+  const getDomaineId = useCallback(
+    (item: ClassificationResultItem, index: number) => {
+      return editedDomains[index] ?? item.domaine_id;
+    },
+    [editedDomains]
+  );
+
   const handleRemoveItem = useCallback((index: number) => {
     setRemovedItems((prev) => {
       const next = new Set(prev);
@@ -38,55 +59,107 @@ export function TranscriptPreview() {
     });
   }, []);
 
+  // Manual items handlers
+  const handleAddManualItem = useCallback(() => {
+    if (!domaines.length) return;
+    // Pick first domain not already used by LLM results or other manual items
+    const usedIds = new Set<number>();
+    classificationResults?.items.forEach((item, i) => {
+      if (!removedItems.has(i)) {
+        usedIds.add(editedDomains[i] ?? item.domaine_id);
+      }
+    });
+    manualItems.forEach((m) => usedIds.add(m.domaineId));
+
+    const available = domaines.find((d) => !usedIds.has(d.id));
+    const domaineId = available?.id ?? domaines[0].id;
+
+    setManualItems((prev) => [...prev, { domaineId, text: '' }]);
+  }, [domaines, classificationResults, removedItems, editedDomains, manualItems]);
+
+  const handleManualDomainChange = useCallback((idx: number, domaineId: number) => {
+    setManualItems((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, domaineId } : m))
+    );
+  }, []);
+
+  const handleManualTextChange = useCallback((idx: number, text: string) => {
+    setManualItems((prev) =>
+      prev.map((m, i) => (i === idx ? { ...m, text } : m))
+    );
+  }, []);
+
+  const handleRemoveManualItem = useCallback((idx: number) => {
+    setManualItems((prev) => prev.filter((_, i) => i !== idx));
+  }, []);
+
   const handleValidateAll = async () => {
     if (!classificationResults || eleveId == null || periodeId == null) return;
 
-    const activeItems = classificationResults.items.filter(
+    const activeLlmItems = classificationResults.items.filter(
       (_, i) => !removedItems.has(i)
     );
-    if (activeItems.length === 0) {
+    const activeManualItems = manualItems.filter((m) => m.text.trim());
+    if (activeLlmItems.length === 0 && activeManualItems.length === 0) {
       clear();
       return;
     }
 
     setSaving(true);
     try {
+      // Save LLM items
       for (let i = 0; i < classificationResults.items.length; i++) {
         if (removedItems.has(i)) continue;
         const item = classificationResults.items[i];
         const finalText = getObservationText(item, i).trim();
         if (!finalText) continue;
 
-        if (item.observation_before) {
-          const existing = appreciations.find(
-            (a) => a.domaineId === item.domaine_id
-          );
-          if (existing) {
-            await updateAppreciation(existing.id, {
-              observations: finalText,
-            });
-          } else {
-            await addAppreciation({
-              eleveId,
-              periodeId,
-              domaineId: item.domaine_id,
-              observations: finalText,
-              texteDictation: transcribedText,
-            });
-          }
+        const finalDomaineId = getDomaineId(item, i);
+        const existing = appreciations.find(
+          (a) => a.domaineId === finalDomaineId
+        );
+        if (existing) {
+          await updateAppreciation(existing.id, {
+            observations: finalText,
+          });
         } else {
           await addAppreciation({
             eleveId,
             periodeId,
-            domaineId: item.domaine_id,
+            domaineId: finalDomaineId,
             observations: finalText,
             texteDictation: transcribedText,
           });
         }
       }
+
+      // Save manual items
+      for (const manual of activeManualItems) {
+        const finalText = manual.text.trim();
+        if (!finalText) continue;
+        const existing = appreciations.find(
+          (a) => a.domaineId === manual.domaineId
+        );
+        if (existing) {
+          await updateAppreciation(existing.id, {
+            observations: finalText,
+          });
+        } else {
+          await addAppreciation({
+            eleveId,
+            periodeId,
+            domaineId: manual.domaineId,
+            observations: finalText,
+            texteDictation: transcribedText,
+          });
+        }
+      }
+
       await loadAppreciations(eleveId, periodeId);
       setEditedTexts({});
+      setEditedDomains({});
       setRemovedItems(new Set());
+      setManualItems([]);
       clear();
     } catch (e) {
       console.error('Erreur sauvegarde appreciations:', e);
@@ -97,16 +170,19 @@ export function TranscriptPreview() {
 
   const handleReject = useCallback(() => {
     setEditedTexts({});
+    setEditedDomains({});
     setRemovedItems(new Set());
+    setManualItems([]);
     clear();
   }, [clear]);
 
   // Only show when there's something to display
   if (state === 'idle' || state === 'recording' || state === 'processing' || state === 'done') return null;
 
-  const activeItemCount = classificationResults
+  const activeLlmCount = classificationResults
     ? classificationResults.items.filter((_, i) => !removedItems.has(i)).length
     : 0;
+  const activeItemCount = activeLlmCount + manualItems.length;
 
   return (
     <div className="mx-4 mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2 max-h-[60vh] overflow-y-auto">
@@ -148,32 +224,37 @@ export function TranscriptPreview() {
         {/* State: classified — show multi-domain results with editable textareas */}
         {state === 'classified' && classificationResults && (
           <div className="mt-2 space-y-2">
+            {/* LLM classification items */}
             {classificationResults.items.map((item, index) => {
               if (removedItems.has(index)) return null;
               return (
                 <div
-                  key={`${item.domaine_id}-${index}`}
+                  key={`llm-${item.domaine_id}-${index}`}
                   className="bg-white/80 rounded-md border border-slate-200 p-2 relative"
                 >
                   {/* Remove button */}
-                  {classificationResults.items.length > 1 && (
-                    <button
-                      onClick={() => handleRemoveItem(index)}
-                      className="absolute top-1.5 right-1.5 p-0.5 text-slate-300 hover:text-red-500 transition-colors"
-                      title="Retirer ce domaine"
-                    >
-                      <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18" />
-                        <line x1="6" y1="6" x2="18" y2="18" />
-                      </svg>
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleRemoveItem(index)}
+                    className="absolute top-1.5 right-1.5 p-0.5 text-slate-300 hover:text-red-500 transition-colors"
+                    title="Retirer ce domaine"
+                  >
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
 
-                  {/* Domain badge */}
+                  {/* Domain selector */}
                   <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full font-medium">
-                      {item.domaine_nom}
-                    </span>
+                    <select
+                      value={getDomaineId(item, index)}
+                      onChange={(e) => handleChangeDomain(index, Number(e.target.value))}
+                      className="text-xs px-2 py-0.5 bg-green-100 text-green-800 rounded-full font-medium border-none outline-none cursor-pointer hover:bg-green-200 transition-colors"
+                    >
+                      {domaines.map((d) => (
+                        <option key={d.id} value={d.id}>{d.nom}</option>
+                      ))}
+                    </select>
                   </div>
 
                   {/* Editable observation */}
@@ -196,6 +277,49 @@ export function TranscriptPreview() {
               );
             })}
 
+            {/* Manually added items */}
+            {manualItems.map((manual, idx) => (
+              <div
+                key={`manual-${idx}`}
+                className="bg-white/80 rounded-md border border-amber-300 border-dashed p-2 relative"
+              >
+                {/* Remove button */}
+                <button
+                  onClick={() => handleRemoveManualItem(idx)}
+                  className="absolute top-1.5 right-1.5 p-0.5 text-slate-300 hover:text-red-500 transition-colors"
+                  title="Retirer"
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+
+                {/* Domain selector */}
+                <div className="flex items-center gap-2 mb-1">
+                  <select
+                    value={manual.domaineId}
+                    onChange={(e) => handleManualDomainChange(idx, Number(e.target.value))}
+                    className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full font-medium border-none outline-none cursor-pointer hover:bg-amber-200 transition-colors"
+                  >
+                    {domaines.map((d) => (
+                      <option key={d.id} value={d.id}>{d.nom}</option>
+                    ))}
+                  </select>
+                  <span className="text-xs text-amber-500">ajout manuel</span>
+                </div>
+
+                {/* Editable observation */}
+                <textarea
+                  value={manual.text}
+                  onChange={(e) => handleManualTextChange(idx, e.target.value)}
+                  placeholder="Coller ou saisir l'observation..."
+                  className="w-full text-sm text-slate-700 bg-white px-2 py-1.5 rounded border border-slate-200 focus:border-amber-400 focus:ring-1 focus:ring-amber-200 outline-none resize-none transition-colors"
+                  rows={2}
+                />
+              </div>
+            ))}
+
             {/* Action buttons */}
             <div className="flex items-center gap-2 pt-1">
               <button
@@ -208,6 +332,15 @@ export function TranscriptPreview() {
                   : activeItemCount > 1
                     ? `Valider tout (${activeItemCount})`
                     : 'Valider'}
+              </button>
+              {/* Add manual domain button */}
+              <button
+                onClick={handleAddManualItem}
+                disabled={saving}
+                className="px-2 py-1.5 text-xs font-medium text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 disabled:opacity-50 rounded-md transition-colors"
+                title="Ajouter un domaine manquant"
+              >
+                + Domaine
               </button>
               <button
                 onClick={handleReject}
