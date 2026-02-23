@@ -13,7 +13,8 @@ interface ToolbarMicProps {
 
 export function ToolbarMic({ eleveId, periodeId, disabled }: ToolbarMicProps) {
   const { state, text, error, startRecording, stopAndTranscribe, retry, clearError } = useTranscription();
-  const { setState, setTranscribedText, setError, setContext, clear } = useDictationStore();
+  const { setState, setTranscribedText, setError, setContext, clear, classifyText,
+    state: dictationState } = useDictationStore();
   const stateRef = useRef(state);
   stateRef.current = state;
 
@@ -30,15 +31,16 @@ export function ToolbarMic({ eleveId, periodeId, disabled }: ToolbarMicProps) {
     }
   }, [state, error, setState, setError]);
 
-  // When transcription completes → write to dictationStore
+  // When transcription completes → write to dictationStore + auto-classify (Story 19.4)
   useEffect(() => {
     if (state === 'done' && text) {
       setTranscribedText(text);
       setContext(eleveId, periodeId);
       setState('done');
       retry(); // reset useTranscription for next recording
+      classifyText(); // auto-launch classification pipeline
     }
-  }, [state, text, eleveId, periodeId, setTranscribedText, setContext, setState, retry]);
+  }, [state, text, eleveId, periodeId, setTranscribedText, setContext, setState, retry, classifyText]);
 
   const showTooltip = useCallback((msg: string) => {
     if (tooltipTimer.current) clearTimeout(tooltipTimer.current);
@@ -46,8 +48,10 @@ export function ToolbarMic({ eleveId, periodeId, disabled }: ToolbarMicProps) {
     tooltipTimer.current = setTimeout(() => setTooltip(null), 2000);
   }, []);
 
+  const pipelineBusy = dictationState === 'processing' || dictationState === 'done' || dictationState === 'classifying';
+
   const handlePointerDown = useCallback(async () => {
-    if (disabled) return;
+    if (disabled || pipelineBusy) return;
     if (eleveId === null) {
       showTooltip('Selectionnez un eleve');
       return;
@@ -57,7 +61,7 @@ export function ToolbarMic({ eleveId, periodeId, disabled }: ToolbarMicProps) {
     if (s === 'error') clearError();
     clear(); // reset dictation store for new recording
     await startRecording();
-  }, [disabled, eleveId, showTooltip, startRecording, clearError, clear]);
+  }, [disabled, pipelineBusy, eleveId, showTooltip, startRecording, clearError, clear]);
 
   const handlePointerUp = useCallback(async () => {
     if (stateRef.current !== 'recording') return;
@@ -81,11 +85,11 @@ export function ToolbarMic({ eleveId, periodeId, disabled }: ToolbarMicProps) {
             : 'Maintenir pour dicter';
 
   return (
-    <div className="relative">
+    <div className="relative flex items-center gap-1.5">
       <button
         onPointerDown={handlePointerDown}
         onPointerUp={handlePointerUp}
-        disabled={disabled || isProcessing}
+        disabled={disabled || isProcessing || pipelineBusy}
         className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
           isRecording
             ? 'bg-red-500 text-white animate-pulse'
@@ -113,6 +117,14 @@ export function ToolbarMic({ eleveId, periodeId, disabled }: ToolbarMicProps) {
           </svg>
         )}
       </button>
+
+      {/* Pipeline progress indicator (Story 19.4) */}
+      {dictationState === 'processing' && (
+        <span className="text-xs text-blue-600 animate-pulse whitespace-nowrap">Transcription...</span>
+      )}
+      {dictationState === 'classifying' && (
+        <span className="text-xs text-indigo-600 animate-pulse whitespace-nowrap">Classification...</span>
+      )}
 
       {/* Floating tooltip */}
       {tooltip && (

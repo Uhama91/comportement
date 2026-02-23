@@ -155,7 +155,7 @@ pub async fn transcribe_audio(
     info!(
         "Transcription terminee en {}ms: \"{}\"",
         duration_ms,
-        if text.len() > 80 { &text[..80] } else { &text }
+        if text.len() > 80 { &text[..text.floor_char_boundary(80)] } else { &text }
     );
 
     // Watchdog: post-request healthcheck + preventive restart (before auto-stop)

@@ -224,9 +224,26 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
       const appreciation = get().appreciations.find(a => a.id === id);
       if (!appreciation) return;
 
+      // Build SET clause dynamically — only update provided fields
+      const setClauses: string[] = [];
+      const params: any[] = [];
+      let paramIdx = 1;
+
+      if ('niveauLsu' in data) {
+        setClauses.push(`niveau_lsu = $${paramIdx++}`);
+        params.push(data.niveauLsu ?? null);
+      }
+      if ('observations' in data) {
+        setClauses.push(`observations = $${paramIdx++}`);
+        params.push(data.observations ?? null);
+      }
+
+      if (setClauses.length === 0) return;
+
+      params.push(id);
       await db.execute(
-        `UPDATE appreciations SET niveau_lsu = $1, observations = $2 WHERE id = $3`,
-        [data.niveauLsu ?? null, data.observations ?? null, id]
+        `UPDATE appreciations SET ${setClauses.join(', ')} WHERE id = $${paramIdx}`,
+        params
       );
       await get().loadAppreciations(appreciation.eleveId, appreciation.periodeId);
     } catch (error) {

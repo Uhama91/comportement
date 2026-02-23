@@ -380,7 +380,7 @@ async fn send_classification_request(
             { "role": "user", "content": user_prompt }
         ],
         "temperature": 0.1,
-        "max_tokens": 512,
+        "max_tokens": 1024,
         "grammar": grammar
     });
 
@@ -433,11 +433,15 @@ async fn send_classification_request(
     Ok(items)
 }
 
-/// Validate a single classification item from the LLM
+/// Max chars for an observation — truncate (don't reject) if exceeded
+const MAX_OBSERVATION_CHARS: usize = 300;
+
+/// Validate a single classification item from the LLM.
+/// Returns the (possibly truncated) observation text.
 fn validate_classification_item(
     item: &LlmClassificationItem,
     domain_count: usize,
-) -> Result<(), SidecarError> {
+) -> Result<String, SidecarError> {
     if item.domaine_id >= domain_count {
         return Err(SidecarError::Internal(format!(
             "domaine_id {} hors range (0..{})",
@@ -453,14 +457,59 @@ fn validate_classification_item(
         ));
     }
 
-    if obs.len() > 500 {
-        return Err(SidecarError::Internal(format!(
-            "observation_mise_a_jour trop longue ({} chars, max 500)",
-            obs.len()
-        )));
+    // Truncate to MAX_OBSERVATION_CHARS if the LLM was too verbose
+    if obs.len() > MAX_OBSERVATION_CHARS {
+        // Find last sentence end within limit
+        let truncated = &obs[..obs.floor_char_boundary(MAX_OBSERVATION_CHARS)];
+        let last_period = truncated.rfind('.');
+        let clean = match last_period {
+            Some(pos) if pos > MAX_OBSERVATION_CHARS / 2 => &truncated[..=pos],
+            _ => truncated,
+        };
+        info!(
+            "Observation tronquee: {} chars -> {} chars",
+            obs.len(),
+            clean.len()
+        );
+        return Ok(clean.to_string());
     }
 
-    Ok(())
+    Ok(obs.to_string())
+}
+
+/// Keywords that map to domain names for post-filtering hallucinated domains.
+/// The LLM (Qwen 1.5B) tends to fill ALL domains even when only a few are mentioned.
+/// This function checks if a domain is actually referenced in the dictated text.
+fn domain_mentioned_in_text(domain_name: &str, text: &str) -> bool {
+    let text_lower = text.to_lowercase();
+    let name_lower = domain_name.to_lowercase();
+
+    // Direct name match
+    if text_lower.contains(&name_lower) {
+        return true;
+    }
+
+    // Keyword aliases for common domains
+    let keywords: &[(&str, &[&str])] = &[
+        ("francais", &["francais", "français", "lecture", "ecriture", "écriture", "orthographe", "grammaire", "conjugaison", "vocabulaire", "dictee", "dictée", "rédaction", "redaction", "expression écrite", "expression ecrite", "compréhension", "comprehension"]),
+        ("mathematiques", &["mathematiques", "mathématiques", "maths", "calcul", "géométrie", "geometrie", "numération", "numeration", "problèmes", "problemes", "multiplication", "division", "addition", "soustraction", "nombres"]),
+        ("sciences", &["sciences", "science", "technologie", "vivant", "matière", "matiere", "énergie", "energie", "expérience", "experience"]),
+        ("histoire", &["histoire", "géographie", "geographie", "géo", "geo", "carte", "chronologie", "époque", "epoque"]),
+        ("enseignement moral", &["moral", "civique", "citoyen", "citoyenneté", "citoyennete", "respect", "règles", "regles", "débat", "debat", "laïcité", "laicite"]),
+        ("education physique", &["sport", "sportive", "physique", "eps", "course", "gymnastique", "natation", "athlétisme", "athletisme", "jeux"]),
+        ("arts plastiques", &["arts plastiques", "dessin", "peinture", "sculpture", "arts visuels"]),
+        ("education musicale", &["musique", "musicale", "chant", "instrument", "rythme"]),
+        ("langues vivantes", &["anglais", "langue", "langues", "english", "espagnol", "allemand"]),
+    ];
+
+    for (domain_key, domain_keywords) in keywords {
+        if name_lower.contains(domain_key) {
+            return domain_keywords.iter().any(|kw| text_lower.contains(kw));
+        }
+    }
+
+    // Unknown domain: keep it (don't filter custom domains)
+    true
 }
 
 /// Classify dictated text into one or more domains and merge with existing observations (V2.1).
@@ -553,12 +602,23 @@ pub async fn classify_and_merge(
     // Increment request count
     state.increment_request_count(SidecarName::Llama).await;
 
-    // Step 7: Validate each item and build results
+    // Step 7: Validate each item, post-filter hallucinated domains, and build results
     let mut items: Vec<ClassificationResultItem> = Vec::new();
     for item in &classification_items {
-        validate_classification_item(item, domains.len()).map_err(|e| e.to_string())?;
+        let observation_text =
+            validate_classification_item(item, domains.len()).map_err(|e| e.to_string())?;
 
         let domain = &domains[item.domaine_id];
+
+        // Post-filter: skip domains not actually mentioned in the dictation
+        if !domain_mentioned_in_text(&domain.nom, &text) {
+            info!(
+                "Domaine '{}' filtre (non mentionne dans la dictee)",
+                domain.nom
+            );
+            continue;
+        }
+
         let observation_before = obs_map.get(&domain.id).cloned();
 
         items.push(ClassificationResultItem {
@@ -566,15 +626,31 @@ pub async fn classify_and_merge(
             domaine_nom: domain.nom.clone(),
             domaine_index: item.domaine_id,
             observation_before,
-            observation_after: item.observation_mise_a_jour.trim().to_string(),
+            observation_after: observation_text,
         });
+    }
+
+    // If all items were filtered, keep the first one as fallback
+    if items.is_empty() && !classification_items.is_empty() {
+        let first = &classification_items[0];
+        let observation_text =
+            validate_classification_item(first, domains.len()).map_err(|e| e.to_string())?;
+        let domain = &domains[first.domaine_id];
+        items.push(ClassificationResultItem {
+            domaine_id: domain.id,
+            domaine_nom: domain.nom.clone(),
+            domaine_index: first.domaine_id,
+            observation_before: obs_map.get(&domain.id).cloned(),
+            observation_after: observation_text,
+        });
+        info!("Tous les domaines filtres, fallback sur le premier");
     }
 
     let duration_ms = start.elapsed().as_millis() as u64;
 
     info!(
-        "Classification terminee en {}ms: {} domaine(s) pour eleve_id={}",
-        duration_ms, items.len(), eleve_id
+        "Classification terminee en {}ms: {} domaine(s) retenu(s) (sur {} du LLM) pour eleve_id={}",
+        duration_ms, items.len(), classification_items.len(), eleve_id
     );
 
     // Step 8: Auto-stop llama (ADR-002)
@@ -675,14 +751,17 @@ mod tests {
     }
 
     #[test]
-    fn reject_too_long_observation() {
+    fn truncate_too_long_observation() {
+        let long_text = "Phrase un. ".repeat(50); // ~550 chars
         let item = LlmClassificationItem {
             domaine_id: 0,
-            observation_mise_a_jour: "A".repeat(501),
+            observation_mise_a_jour: long_text,
         };
-        let err = validate_classification_item(&item, 5);
-        assert!(err.is_err());
-        assert!(err.unwrap_err().to_string().contains("trop longue"));
+        let result = validate_classification_item(&item, 5);
+        assert!(result.is_ok());
+        let obs = result.unwrap();
+        assert!(obs.len() <= MAX_OBSERVATION_CHARS + 1); // +1 for trailing period
+        assert!(obs.ends_with('.')); // Truncated at sentence boundary
     }
 
     #[test]
@@ -691,7 +770,9 @@ mod tests {
             domaine_id: 3,
             observation_mise_a_jour: "Bonne participation en histoire.".to_string(),
         };
-        assert!(validate_classification_item(&item, 9).is_ok());
+        let result = validate_classification_item(&item, 9);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "Bonne participation en histoire.");
     }
 
     #[test]
@@ -701,7 +782,9 @@ mod tests {
             domaine_id: 4,
             observation_mise_a_jour: "OK".to_string(),
         };
-        assert!(validate_classification_item(&item, 5).is_ok());
+        let result = validate_classification_item(&item, 5);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), "OK");
     }
 
     #[test]
@@ -710,5 +793,49 @@ mod tests {
         let result: Vec<LlmClassificationItem> = serde_json::from_str(json).unwrap();
         assert_eq!(result[0].domaine_id, 0);
         assert!(result[0].observation_mise_a_jour.contains("bonjour"));
+    }
+
+    // ─── Post-filter tests (domain_mentioned_in_text) ───
+
+    #[test]
+    fn filter_detects_francais_by_keyword() {
+        assert!(domain_mentioned_in_text("Francais", "En français, il lit bien."));
+        assert!(domain_mentioned_in_text("Francais", "Bonne lecture orale."));
+        assert!(domain_mentioned_in_text("Francais", "L'orthographe est correcte."));
+        assert!(!domain_mentioned_in_text("Francais", "Il court vite en sport."));
+    }
+
+    #[test]
+    fn filter_detects_maths_by_keyword() {
+        assert!(domain_mentioned_in_text("Mathematiques", "En mathématiques, il progresse."));
+        assert!(domain_mentioned_in_text("Mathematiques", "Le calcul mental est bon."));
+        assert!(domain_mentioned_in_text("Mathematiques", "Difficultés en multiplication."));
+        assert!(!domain_mentioned_in_text("Mathematiques", "Bon en histoire."));
+    }
+
+    #[test]
+    fn filter_detects_sport_by_keyword() {
+        assert!(domain_mentioned_in_text("Education Physique et Sportive", "En sport, il est bon."));
+        assert!(domain_mentioned_in_text("Education Physique et Sportive", "La course est bonne."));
+        assert!(!domain_mentioned_in_text("Education Physique et Sportive", "Il lit bien en français."));
+    }
+
+    #[test]
+    fn filter_detects_histoire_geo() {
+        assert!(domain_mentioned_in_text("Histoire-Geographie", "En histoire géographie, très bien."));
+        assert!(domain_mentioned_in_text("Histoire-Geographie", "En histoire, il progresse."));
+        assert!(!domain_mentioned_in_text("Histoire-Geographie", "Bon en maths."));
+    }
+
+    #[test]
+    fn filter_keeps_custom_unknown_domains() {
+        // Custom domains should always be kept (not filtered)
+        assert!(domain_mentioned_in_text("Mon domaine custom", "Texte sans rapport."));
+    }
+
+    #[test]
+    fn filter_is_case_insensitive() {
+        assert!(domain_mentioned_in_text("Francais", "en FRANÇAIS il progresse"));
+        assert!(domain_mentioned_in_text("Sciences et Technologies", "En SCIENCE, c'est bien"));
     }
 }

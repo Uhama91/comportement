@@ -25,7 +25,7 @@ impl SidecarConfig {
                 port: 8080,
                 binary_name: "llama-server",
                 healthcheck_url: "http://127.0.0.1:8080/health".to_string(),
-                healthcheck_timeout: Duration::from_secs(15),
+                healthcheck_timeout: Duration::from_secs(60),
                 healthcheck_interval: Duration::from_millis(500),
                 max_requests: 0, // 0 = no limit
             },
@@ -64,7 +64,7 @@ pub fn build_args(
                 "--port".to_string(),
                 "8080".to_string(),
                 "--ctx-size".to_string(),
-                "2048".to_string(),
+                "3072".to_string(),
                 "--threads".to_string(),
                 "4".to_string(),
             ]
@@ -176,14 +176,14 @@ mod tests {
             Some("/path/to/grammar.gbnf"),
         );
         assert!(!args.contains(&"--grammar-file".to_string()));
-        assert!(args.contains(&"2048".to_string())); // ctx-size upgraded
+        assert!(args.contains(&"3072".to_string())); // ctx-size for multi-domain output
     }
 
     #[test]
     fn llama_args_ctx_size_2048() {
         let args = build_args(SidecarName::Llama, "/path/to/model.gguf", None);
         let ctx_idx = args.iter().position(|a| a == "--ctx-size").unwrap();
-        assert_eq!(args[ctx_idx + 1], "2048");
+        assert_eq!(args[ctx_idx + 1], "3072");
     }
 
     #[test]

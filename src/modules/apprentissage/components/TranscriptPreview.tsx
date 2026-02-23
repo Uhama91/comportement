@@ -109,7 +109,7 @@ export function TranscriptPreview() {
     : 0;
 
   return (
-    <div className="mx-4 mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+    <div className="mx-4 mt-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2 max-h-[60vh] overflow-y-auto">
       <div className="flex-1 min-w-0">
         {/* Transcribed text */}
         {transcribedText && (

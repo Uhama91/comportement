@@ -54,11 +54,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Phase 4 — Implementation :**
 - [x] **Sprint 1 : Epic 18** (4/4 stories — COMPLET)
   - Annee Scolaire & Multi-niveaux (migrations, CRUD, niveaux PS-CM2, referentiel domaines, echelle LSU)
-- [ ] **Sprint 2 : Epic 19** (3/4 stories — EN COURS)
+- [x] **Sprint 2 : Epic 19** (4/4 stories — COMPLET)
   - 19.1 GBNF dynamique + prompt builder (ADR-007/008)
   - 19.2 Micro unique global (ToolbarMic, TranscriptPreview, dictationStore)
   - 19.3 Classification & Fusion LLM (classify_and_merge, DB queries, 7 tests)
-  - 19.4 Review Panel inline (TODO)
+  - 19.4 Pipeline bout-en-bout : auto-classification, indicateur progression, bouton Valider/Rejeter
 
 ### V2 — Phase 4 Implementation (COMPLETE)
 
@@ -199,3 +199,4 @@ Planning (PRD, Architecture, Epics) + Implementation (Epics 1-8) en 3 jours. Tag
 | 2026-02-22 | Story 19.1 : GBNF dynamique + prompt builder (ADR-007/008, ctx-size 2048, 15 tests) | `gbnf.rs`, `prompt_builder.rs`, `config.rs` |
 | 2026-02-22 | Story 19.2 : Micro unique global toolbar (ToolbarMic, TranscriptPreview, dictationStore) | `dictationStore.ts`, `ToolbarMic.tsx`, `TranscriptPreview.tsx` |
 | 2026-02-22 | Story 19.3 : Classification & Fusion LLM (classify_and_merge, DB queries, GBNF+prompt, 7 tests) | `structuration.rs`, `types/index.ts`, `dictationStore.ts`, `TranscriptPreview.tsx`, `lib.rs` |
+| 2026-02-23 | Story 19.4 : Pipeline bout-en-bout (auto-classification, indicateur progression, bouton Valider/Rejeter) | `ToolbarMic.tsx`, `TranscriptPreview.tsx` |
