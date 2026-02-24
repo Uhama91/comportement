@@ -1,11 +1,12 @@
 pub mod v2_1;
+pub mod v2_1_rev2;
 
 use sqlx::Connection;
 use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Version user_version qui marque l'application complète des migrations V2.1
-const V2_1_USER_VERSION: i32 = 9;
+const V2_1_USER_VERSION: i32 = 10;
 
 /// Retourne le chemin du fichier SQLite selon la plateforme.
 /// macOS  : ~/Library/Application Support/fr.comportement.app/comportement.db
@@ -67,8 +68,8 @@ pub fn backup_database(db_path: &PathBuf) -> Result<PathBuf, String> {
 /// Logique :
 /// 1. Si le fichier DB n'existe pas → skip (fresh install, plugin pas encore initialisé)
 /// 2. Si la table `students` n'existe pas → skip (même raison)
-/// 3. Si PRAGMA user_version >= 9 → déjà appliqué, idempotent
-/// 4. Sinon : backup + 8 migrations avec SAVEPOINT + PRAGMA user_version = 9
+/// 3. Si PRAGMA user_version >= 10 → déjà appliqué, idempotent
+/// 4. Sinon : backup + 12 migrations avec SAVEPOINT + PRAGMA user_version = 10
 pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
     let db_path = get_db_path(app)?;
 
@@ -118,9 +119,10 @@ pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
     // Backup avant toute modification
     backup_database(&db_path)?;
 
-    // Appliquer les 8 migrations avec SAVEPOINT
+    // Appliquer les 8 migrations V2.1 avec SAVEPOINT
     let migrations = v2_1::migrations();
-    let total = migrations.len();
+    let migrations_rev2 = v2_1_rev2::migrations();
+    let total = migrations.len() + migrations_rev2.len();
 
     for (i, migration) in migrations.iter().enumerate() {
         let sp_name = format!("sp_{}", migration.name);
@@ -197,6 +199,76 @@ pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
         }
     }
 
+    // Appliquer les 4 migrations V2.1-rev2 avec SAVEPOINT (même pattern)
+    let offset = migrations.len();
+    for (i, migration) in migrations_rev2.iter().enumerate() {
+        let sp_name = format!("sp_{}", migration.name);
+
+        sqlx::query(&format!("SAVEPOINT {}", sp_name))
+            .execute(&mut conn)
+            .await
+            .map_err(|e| {
+                format!(
+                    "Impossible de poser le SAVEPOINT {} : {}",
+                    sp_name, e
+                )
+            })?;
+
+        let mut migration_ok = true;
+        for statement in migration.statements {
+            let stmt = statement.trim();
+            if stmt.is_empty() {
+                continue;
+            }
+            if let Err(e) = sqlx::query(stmt).execute(&mut conn).await {
+                eprintln!(
+                    "[migrations] Erreur dans {} : {}",
+                    migration.name, e
+                );
+                migration_ok = false;
+                break;
+            }
+        }
+
+        if migration_ok {
+            sqlx::query(&format!("RELEASE {}", sp_name))
+                .execute(&mut conn)
+                .await
+                .map_err(|e| {
+                    format!("RELEASE SAVEPOINT {} échoué : {}", sp_name, e)
+                })?;
+
+            println!(
+                "[migrations] ✓ {} ({}/{}) appliquée.",
+                migration.name,
+                offset + i + 1,
+                total
+            );
+
+            let _ = app.emit(
+                "migration-progress",
+                serde_json::json!({
+                    "current": offset + i + 1,
+                    "total": total,
+                    "name": migration.name,
+                }),
+            );
+        } else {
+            let _ = sqlx::query(&format!("ROLLBACK TO SAVEPOINT {}", sp_name))
+                .execute(&mut conn)
+                .await;
+            let _ = sqlx::query(&format!("RELEASE {}", sp_name))
+                .execute(&mut conn)
+                .await;
+
+            eprintln!(
+                "[migrations] Migration {} en échec → rollback. Migrations V2.1 interrompues.",
+                migration.name
+            );
+            return Ok(());
+        }
+    }
+
     // Marquer les migrations comme appliquées
     sqlx::query(&format!("PRAGMA user_version = {}", V2_1_USER_VERSION))
         .execute(&mut conn)
@@ -217,7 +289,6 @@ pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sqlx::Connection as _;
     use std::path::Path;
 
     /// Crée une DB SQLite temporaire avec le schéma V2 minimal nécessaire aux tests.
@@ -287,13 +358,21 @@ mod tests {
         conn
     }
 
-    /// Applique les migrations V2.1 directement via sqlx (sans AppHandle).
+    /// Applique les migrations V2.1 + V2.1-rev2 directement via sqlx (sans AppHandle).
     async fn apply_migrations_direct(conn: &mut sqlx::sqlite::SqliteConnection) -> bool {
         let migrations = v2_1::migrations();
-        let total = migrations.len();
+        let migrations_rev2 = v2_1_rev2::migrations();
+        let total = migrations.len() + migrations_rev2.len();
 
-        for (i, migration) in migrations.iter().enumerate() {
-            let sp_name = format!("sp_{}", migration.name);
+        // Chaîner les deux vecs de migrations
+        let all: Vec<(&str, &[&str])> = migrations
+            .iter()
+            .map(|m| (m.name, m.statements))
+            .chain(migrations_rev2.iter().map(|m| (m.name, m.statements)))
+            .collect();
+
+        for (i, (name, statements)) in all.iter().enumerate() {
+            let sp_name = format!("sp_{}", name);
 
             sqlx::query(&format!("SAVEPOINT {}", sp_name))
                 .execute(&mut *conn)
@@ -301,13 +380,13 @@ mod tests {
                 .unwrap();
 
             let mut ok = true;
-            for stmt in migration.statements {
+            for stmt in *statements {
                 let s = stmt.trim();
                 if s.is_empty() {
                     continue;
                 }
                 if let Err(e) = sqlx::query(s).execute(&mut *conn).await {
-                    eprintln!("Migration {} échouée: {}", migration.name, e);
+                    eprintln!("Migration {} échouée: {}", name, e);
                     ok = false;
                     break;
                 }
@@ -318,7 +397,7 @@ mod tests {
                     .execute(&mut *conn)
                     .await
                     .unwrap();
-                println!("✓ {} ({}/{})", migration.name, i + 1, total);
+                println!("✓ {} ({}/{})", name, i + 1, total);
             } else {
                 let _ = sqlx::query(&format!("ROLLBACK TO SAVEPOINT {}", sp_name))
                     .execute(&mut *conn)
@@ -347,12 +426,12 @@ mod tests {
         let ok = apply_migrations_direct(&mut conn).await;
         assert!(ok, "Les migrations V2.1 doivent s'appliquer sans erreur");
 
-        // Vérifier user_version = 9
+        // Vérifier user_version = 10
         let version: i32 = sqlx::query_scalar("PRAGMA user_version")
             .fetch_one(&mut conn)
             .await
             .unwrap();
-        assert_eq!(version, V2_1_USER_VERSION, "PRAGMA user_version doit valoir 9");
+        assert_eq!(version, V2_1_USER_VERSION, "PRAGMA user_version doit valoir 10");
     }
 
     #[tokio::test]
@@ -557,6 +636,9 @@ mod tests {
             "appreciations_generales",
             "config_lsu",
             "identifiants_onde",
+            "evenements_pedagogiques",
+            "syntheses_lsu",
+            "absences_v2",
         ];
 
         for table in &expected_tables {
@@ -593,6 +675,68 @@ mod tests {
                 "La colonne '{}' doit exister dans students",
                 col
             );
+        }
+    }
+
+    #[tokio::test]
+    async fn test_rev2_columns_exist() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+
+        let mut conn = setup_v2_db_file(&path).await;
+        let ok = apply_migrations_direct(&mut conn).await;
+        assert!(ok);
+
+        // evenements_pedagogiques : uuid, type, source
+        let evt_cols = ["uuid", "type", "source", "texte_dictation", "synced_at"];
+        for col in &evt_cols {
+            let count: i64 = sqlx::query_scalar(&format!(
+                "SELECT COUNT(*) FROM pragma_table_info('evenements_pedagogiques') WHERE name='{}'",
+                col
+            ))
+            .fetch_one(&mut conn)
+            .await
+            .unwrap();
+            assert_eq!(count, 1, "Colonne '{}' doit exister dans evenements_pedagogiques", col);
+        }
+
+        // absences_v2 : demi_journee, type_absence
+        let abs_cols = ["demi_journee", "type_absence", "retard"];
+        for col in &abs_cols {
+            let count: i64 = sqlx::query_scalar(&format!(
+                "SELECT COUNT(*) FROM pragma_table_info('absences_v2') WHERE name='{}'",
+                col
+            ))
+            .fetch_one(&mut conn)
+            .await
+            .unwrap();
+            assert_eq!(count, 1, "Colonne '{}' doit exister dans absences_v2", col);
+        }
+
+        // appreciations_generales : version, generated_by (ajoutés par M012)
+        let ag_cols = ["version", "generated_by"];
+        for col in &ag_cols {
+            let count: i64 = sqlx::query_scalar(&format!(
+                "SELECT COUNT(*) FROM pragma_table_info('appreciations_generales') WHERE name='{}'",
+                col
+            ))
+            .fetch_one(&mut conn)
+            .await
+            .unwrap();
+            assert_eq!(count, 1, "Colonne '{}' doit exister dans appreciations_generales", col);
+        }
+
+        // syntheses_lsu : version, generated_by
+        let synth_cols = ["version", "generated_by", "texte"];
+        for col in &synth_cols {
+            let count: i64 = sqlx::query_scalar(&format!(
+                "SELECT COUNT(*) FROM pragma_table_info('syntheses_lsu') WHERE name='{}'",
+                col
+            ))
+            .fetch_one(&mut conn)
+            .await
+            .unwrap();
+            assert_eq!(count, 1, "Colonne '{}' doit exister dans syntheses_lsu", col);
         }
     }
 }

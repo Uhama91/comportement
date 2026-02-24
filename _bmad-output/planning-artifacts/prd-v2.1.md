@@ -3,6 +3,7 @@ stepsCompleted: [step-e-01-discovery, step-e-02-review, step-e-03-edit]
 inputDocuments:
   - prd-v2.md
   - analysis/brainstorming-session-2026-02-17.md
+  - analysis/brainstorming-session-2026-02-24.md
   - product-brief-comportement-2026-02-10.md
   - research/technical-ia-locale-tauri-sidecars-research-2026-02-10.md
   - architecture-v2.md
@@ -13,23 +14,25 @@ workflow: 'edit'
 classification:
   projectType: desktop_app
   domain: edtech
-  complexity: medium-high
+  complexity: high
   projectContext: brownfield
-date: 2026-02-17
+date: 2026-02-24
 author: Uhama
-version: V2.1
-previous_version: V2 (2026-02-10)
+version: V2.1-rev2
+previous_version: V2.1 (2026-02-17)
 editHistory:
   - date: 2026-02-17
     changes: 'Refonte Module 3 (LLM classificateur+fusionneur, domaines dynamiques par cycle, micro unique, panneau revue diff), compatibilite LSU 4 niveaux, gestion annee scolaire, classes multi-niveaux, undo/redo, appreciation generale, export LSU XML optionnel'
+  - date: 2026-02-24
+    changes: 'REVISION MAJEURE post-brainstorming : suppression Module 2, ajout Registre d appel, Module Evaluations, LSU Vivant, event sourcing, micro par eleve (dual-mode), synthese LLM on-demand, versioning syntheses, double vue LSU, import CSV eleves'
 ---
 
-# Product Requirements Document - Comportement V2.1
+# Product Requirements Document - Comportement V2.1 (rev2)
 
 **Auteur :** Uhama
-**Date :** 2026-02-17
-**Version :** V2.1
-**Version precedente :** V2 (2026-02-10) — `prd-v2.md`
+**Date :** 2026-02-24 (revision majeure)
+**Version :** V2.1-rev2
+**Version precedente :** V2.1 (2026-02-17), V2 (2026-02-10)
 
 ---
 
@@ -37,37 +40,48 @@ editHistory:
 
 ### 1.1 Contexte
 
-**Comportement** est une application desktop locale (Tauri v2) utilisee quotidiennement par un enseignant de CM2 a l'Ecole Elementaire Victor Hugo (Sevran, 93) pour le suivi du comportement et des apprentissages de ses 18 eleves. La **V1** (production depuis janvier 2026) remplace le tableau physique a emojis. La **V2** (completee fevrier 2026) ajoute 3 modules + IA locale.
+**MonCahier** (anciennement Comportement) est une application desktop locale (Tauri v2) utilisee quotidiennement par un enseignant d'ecole elementaire (CM2, Ecole Victor Hugo, Sevran, 93) pour le suivi pedagogique complet de ses 18 eleves. La **V1** (production depuis janvier 2026) gere le comportement de classe. La **V2** (completee fevrier 2026) ajoute 3 modules + IA locale.
 
-La **V2.1** refond le **Module 3 — Domaines d'Apprentissage** pour :
+La **V2.1** est une **refonte majeure** qui transforme MonCahier d'un outil de suivi comportemental en un **assistant pedagogique complet** ou le LSU (Livret Scolaire Unique) se construit progressivement a partir des observations quotidiennes et des evaluations.
 
-- **Compatibilite LSU** : echelle 4 niveaux officielle, domaines par cycle, export XML optionnel
-- **Classes multi-niveaux** : niveau rattache a l'eleve (CE1+CM2 dans une meme classe)
-- **LLM classificateur+fusionneur** : le LLM identifie le domaine vise et fusionne le texte avec l'existant (plus de generation de contenu)
-- **Micro unique global** : un seul bouton micro dans la toolbar (plus un par domaine)
-- **Panneau de revue diff** : visualisation Avant/Apres par domaine avant validation
-- **Gestion de l'annee scolaire** : conteneur principal avec cycle de vie complet (creation, cloture, archive)
+### 1.2 Vision V2.1
 
-### 1.2 Objectifs V2.1
+> Le LSU ne devrait plus etre un formulaire penible a remplir en fin de periode, mais un document vivant qui se nourrit du travail quotidien de l'enseignant.
+
+### 1.3 Changements majeurs par rapport a V2.1 initiale (2026-02-17)
+
+| Aspect | V2.1 initiale (17 fev) | V2.1-rev2 (24 fev) |
+|--------|------------------------|---------------------|
+| Module 2 | Comportement Individuel (conserve) | **SUPPRIME** — remplace par vues filtrees journal/LSU |
+| Module 1 micro | Micro unique toolbar Module 3 | **Micro par eleve** sur carte (dual-mode tap/press) |
+| Absences | Simple toggle (Module 1) | **Registre d'appel complet** (demi-journee, 3 types, motifs, retards, alerte legale) |
+| Module 3 | Refonte appreciation table | **Module Evaluations** (lecons, niveaux, observations) + **LSU Vivant** (syntheses progressives) |
+| Modele donnees | Table `appreciations` evoluee | **Event sourcing leger** (`evenements_pedagogiques` immutable) + `syntheses_lsu` versionnees |
+| LLM pipeline | 1 job (classify+merge) | **3 jobs** (classifier domaine, synthetiser par domaine, appreciation generale) |
+| Synthese | Manuelle | **On-demand LLM** avec versioning (4-5 versions) |
+| Vue LSU | Par eleve uniquement | **Double vue** : par eleve ET par domaine |
+| Import eleves | Saisie manuelle | **Import CSV** en debut d'annee |
+
+### 1.4 Objectifs V2.1
 
 | Objectif | Description |
 |----------|-------------|
-| **Compatibilite LSU** | Echelle 4 niveaux, domaines officiels par cycle, export XML optionnel |
-| **Classes multi-niveaux** | Niveau par eleve (PS-CM2), domaines charges selon le cycle |
-| **Refondre le pipeline LLM** | LLM = classificateur + fusionneur, prompt/GBNF dynamiques depuis BDD |
-| **Simplifier le workflow vocal** | Micro unique global, panneau de revue diff, undo/redo |
-| **Gerer l'annee scolaire** | Creation, cloture, archive en lecture seule, assistant de rentree |
-| **Appreciation generale** | Brouillon auto-genere par LLM, editable par le professeur |
+| **Assistant pedagogique** | Observations spontanees + evaluations structurees → LSU qui se construit tout seul |
+| **Registre d'appel** | Absences par demi-journee, types, motifs, retards, alerte legale 4+ injustifiees/mois |
+| **Module Evaluations** | Saisie par lecon, domaine, niveau LSU, observations (vocal ou manuel) |
+| **LSU Vivant** | Synthese progressive par domaine (LLM on-demand), appreciation generale, double vue, versioning |
+| **Micro par eleve** | Bouton micro dual-mode sur chaque carte eleve (tap toggle / press & hold push-to-talk) |
+| **Event sourcing** | Table immutable `evenements_pedagogiques` — observations, evaluations, motifs sanctions |
+| **Import CSV** | Import liste de classe en debut d'annee |
 
-### 1.3 Relation avec la V2
+### 1.5 Relation avec la V2
 
-La V2.1 est une **refonte ciblee du Module 3** et une extension de l'infrastructure :
-
-- Modules 1 et 2 **inchanges** (avertissements, sanctions, recompenses, incidents)
-- Le pipeline IA existant (sidecars whisper-server + llama-server) est **conserve** mais le role du LLM change
-- Les tables BDD V2 sont **conservees** avec migrations additives (jamais destructives)
-- Nouvelles tables : `annees_scolaires`, `niveaux_classe`, `config_lsu`
-- Colonnes ajoutees : `students.niveau`, `students.annee_id`, `appreciations.previous_observations`, `appreciations.niveau_lsu`, `domaines_apprentissage.cycle/code_lsu/is_custom`
+- **Module 1 — Comportement Classe** : conserve et **enrichi** (micro par eleve, integration registre d'appel)
+- **Module 2 — Comportement Individuel** : **SUPPRIME** (remplace par vues filtrees)
+- **Module 3 — Domaines d'Apprentissage** : **REMPLACE** par Module Evaluations + LSU Vivant
+- Pipeline IA (sidecars whisper-server + llama-server) : conserve, **3 jobs LLM** au lieu de 1
+- Tables BDD V2 : conservees avec migrations additives + nouvelles tables event sourcing
+- Annee scolaire, multi-niveaux, echelle LSU : conserves de V2.1 initiale
 
 ---
 
@@ -77,260 +91,208 @@ La V2.1 est une **refonte ciblee du Module 3** et une extension de l'infrastruct
 
 ```
 +-----------------------------------------------------------------------+
-|                    COMPORTEMENT V2.1                                    |
+|                    MONCAHIER V2.1                                      |
 |                                                                         |
-|  +-----------------+  +-----------------+  +------------------------+  |
-|  |   MODULE 1      |  |   MODULE 2      |  |   MODULE 3 (refonde)   |  |
-|  |   Comportement  |  |   Comportement  |  |   Domaines             |  |
-|  |   Classe        |  |   Individuel    |  |   Apprentissage        |  |
-|  |                 |  |                 |  |                        |  |
-|  | - Avertissements|  | - Fiche eleve   |  | - Micro unique global  |  |
-|  | - Sanctions     |  | - Incidents     |  | - LLM classif+fusion   |  |
-|  | - Recompenses   |  | - Par periode   |  | - Panneau revue diff   |  |
-|  | - Motifs        |  | - Historique    |  | - Domaines par cycle   |  |
-|  | - Absences      |  | - Intervenants  |  | - 4 niveaux LSU        |  |
-|  | - TBI + Export  |  |                 |  | - Undo/redo            |  |
-|  +--------+--------+  +--------+--------+  | - Appre. generale      |  |
-|           |                     |           | - Export LSU XML       |  |
-|           |                     |           +----------+-------------+  |
-|  +--------+---------------------+-----------------------+----------+   |
-|  |                 COUCHE PARTAGEE                                  |   |
-|  |  Eleves | Annee scolaire | Niveaux | Periodes | SQLite | Zustand|   |
-|  +---+-------------------------------------------------+----------+   |
-|      |                                                  |              |
-|  +---+------------------+  +---------------------------+----------+   |
-|  |  SIDECAR 1           |  |  SIDECAR 2                           |   |
-|  |  whisper-server      |  |  llama-server + Qwen 2.5             |   |
-|  |  (STT francais)      |  |  (classificateur + fusionneur)       |   |
-|  |  + VAD natif          |  |  + GBNF dynamique depuis BDD        |   |
-|  +----------------------+  +--------------------------------------+   |
+|  +-------------------+  +-------------------+                          |
+|  | MODULE 1          |  | MODULE 2          |                          |
+|  | Comportement      |  | Registre d'appel  |                          |
+|  | Classe (enrichi)  |  | (NOUVEAU)         |                          |
+|  |                   |  |                   |                          |
+|  | - Avertissements  |  | - Appel matin/pm  |                          |
+|  | - Sanctions       |  | - 3 types absence |                          |
+|  | - Recompenses     |  | - Motifs          |                          |
+|  | - Micro par eleve |  | - Retards         |                          |
+|  | - Motifs vocaux   |  | - Alerte legale   |                          |
+|  +--------+----------+  | - Totaux LSU      |                          |
+|           |              +--------+----------+                          |
+|  +--------+------+  +-----------+----------+                           |
+|  | MODULE 3      |  | MODULE 4             |                           |
+|  | Evaluations   |  | LSU Vivant (NOUVEAU) |                           |
+|  | (NOUVEAU)     |  |                      |                           |
+|  |               |  | - Vue par eleve      |                           |
+|  | - Par lecon   |  | - Vue par domaine    |                           |
+|  | - Domaine     |  | - Synthese LLM       |                           |
+|  | - Niveau LSU  |  | - Appre. generale    |                           |
+|  | - Observations|  | - Versioning         |                           |
+|  | - Historique  |  | - Sources depliables |                           |
+|  | - Saisie lot  |  | - Export LSU XML     |                           |
+|  +-------+-------+  +----------+-----------+                           |
+|          |                      |                                       |
+|  +-------+----------------------+-----------------------------------+  |
+|  |                 COUCHE PARTAGEE                                   |  |
+|  | evenements_pedagogiques | syntheses_lsu | absences | Zustand     |  |
+|  | Eleves | Annee scolaire | Niveaux | Periodes | SQLite           |  |
+|  +---+-----------------------------------------------------------+--+  |
+|      |                                                            |     |
+|  +---+------------------+  +-------------------------------------++    |
+|  |  SIDECAR 1           |  |  SIDECAR 2                           |    |
+|  |  whisper-server      |  |  llama-server + Qwen 2.5              |    |
+|  |  (STT francais)      |  |  3 jobs : classifier, synthetiser,    |    |
+|  |  + VAD natif          |  |  appreciation generale               |    |
+|  +----------------------+  +--------------------------------------+    |
 +-----------------------------------------------------------------------+
 ```
 
 ### 2.2 Modules
 
-#### Module 1 — Comportement Classe (inchange V2)
+#### Module 1 — Comportement Classe (enrichi V2.1)
 
-Suivi global hebdomadaire de toute la classe. Avertissements, sanctions avec motifs obligatoires, absences, recompenses automatiques, grille de cartes, mode TBI, export JSON.
+Suivi global hebdomadaire. Avertissements, sanctions avec motifs (vocaux ou texte), recompenses automatiques, grille de cartes, mode TBI, export JSON. **Nouveau** : bouton micro dual-mode sur chaque carte eleve pour observations spontanees et motifs de sanctions.
 
-#### Module 2 — Comportement Individuel (inchange V2)
+#### Module 2 — Registre d'Appel (nouveau V2.1)
 
-Suivi detaille par eleve, par periode scolaire. Incidents structures : date, heure, type, motif, description, intervenant. Historique chronologique avec filtres.
+Registre d'appel numerique par demi-journee (matin/apres-midi). 3 types d'absence (justifiee, medicale, injustifiee), motifs (vocal ou texte), retards (present + flag). Saisie retroactive possible. Alerte legale si 4+ demi-journees injustifiees sur 30 jours glissants. Totaux auto-calcules pour integration LSU.
 
-#### Module 3 — Domaines d'Apprentissage (refonde V2.1)
+#### Module 3 — Evaluations (nouveau V2.1, remplace ancien Module 3)
 
-Saisie des appreciations par domaine via dictee vocale avec **micro unique global**. Pipeline IA refonde : le LLM **classifie** le domaine vise par la dictee et **fusionne** le texte avec les observations existantes. **Panneau de revue diff** Avant/Apres par domaine avant validation. Domaines officiels charges dynamiquement par cycle de l'eleve. Echelle 4 niveaux LSU. Undo/redo par snapshot. Appreciation generale par eleve/periode.
+Saisie d'evaluations structurees par lecon, domaine d'apprentissage (filtre par cycle eleve), niveau LSU (4 niveaux officiels), observations (vocal ou manuel). Saisie par lot (meme lecon, tous les eleves). Historique par eleve (timeline chronologique). Les evaluations alimentent les evenements pedagogiques.
+
+#### Module 4 — LSU Vivant (nouveau V2.1)
+
+Synthese progressive par domaine generee on-demand par le LLM a partir du journal pedagogique (observations + evaluations). Double vue : par eleve (tous domaines) ET par domaine (tous eleves). Appreciation generale cross-domaines (inclut patterns comportement formules avec tact). Sources depliables sous chaque synthese. Versioning (4-5 versions en arriere). Modifiable vocalement ou manuellement. Export LSU officiel XML.
 
 ### 2.3 Infrastructure IA locale
 
 - **Whisper.cpp** (whisper-server sidecar) : transcription STT francais, modele small FR GGUF Q4 (~480 Mo) — inchange
-- **Qwen 2.5 Coder 1.5B** (llama-server sidecar) : **classificateur + fusionneur** (plus generateur), GGUF Q4 (~980 Mo)
+- **Qwen 2.5 Coder 1.5B** (llama-server sidecar) : **3 jobs** au lieu de 1
+  - **Job 1 — Classifier** : identifie le domaine vise par l'observation dictee
+  - **Job 2 — Synthetiser** : genere une synthese par domaine pour le LSU (on-demand)
+  - **Job 3 — Appreciation generale** : cross-domaines + comportement formule avec tact
 - **Pipeline sequentiel a la demande** : un seul modele actif a la fois — inchange
 - **GBNF dynamique** : grammaire generee depuis la BDD (domaines actifs de l'eleve)
-- **Prompt contextuel** : construit cote Rust avec niveau, domaines, observations existantes
 - **Securite 4 couches** : Prompt contraint, Grammaire GBNF, Validateur Rust, Prepared Statements — inchange
-- **LLM output = texte** : classification domaine + observation fusionnee, jamais de SQL ni d'IDs
 
-### 2.4 Gestion de l'annee scolaire
+### 2.4 Modele de donnees — Event Sourcing leger
 
-- **Annee scolaire** = conteneur principal pour periodes, eleves, appreciations
+Le coeur de V2.1 est un modele event sourcing leger :
+
+- **`evenements_pedagogiques`** : table immutable (append-only) qui capture toutes les observations, evaluations, et motifs de sanctions
+- **`syntheses_lsu`** : syntheses generees par LLM (versionnees, 4-5 versions en arriere)
+- **`appreciations_generales`** : appreciation cross-domaines par eleve/periode (versionnee)
+- **`absences`** : refonte avec demi-journees, types, motifs, retards
+
+### 2.5 Gestion de l'annee scolaire (inchange V2.1)
+
+- **Annee scolaire** = conteneur principal
 - **Cycle de vie** : creation → active → cloturee (lecture seule)
-- **Archives** : annees precedentes accessibles en consultation
-- **Assistant de rentree** : wizard de creation d'une nouvelle annee scolaire
+- Archive possible en fin d'annee ou entre periodes
+- Mono-user, une DB par machine
 
 ---
 
 ## 3. Functional Requirements
 
-### 3.1 Module 1 — Comportement Classe (inchange V2)
+### 3.1 Module 1 — Comportement Classe (enrichi)
 
-#### 3.1.1 Gestion des Eleves
+#### 3.1.1-3.1.7 FRs existantes (inchangees V2)
 
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR1** | L'enseignant peut ajouter un nouvel eleve a la classe | - L'eleve apparait dans la grille apres ajout<br>- L'eleve est sauvegarde en base<br>- Maximum 30 eleves par classe | Must | M1 |
-| **FR2** | L'enseignant peut modifier le prenom d'un eleve | - Le nouveau prenom est affiche immediatement<br>- La modification est persistee en base<br>- Prenom vide = erreur | Must | M1 |
-| **FR3** | L'enseignant peut supprimer un eleve de la classe | - Confirmation requise avant suppression<br>- Suppression en cascade (warnings, sanctions, rewards)<br>- L'eleve disparait de la grille | Must | M1 |
-| **FR4** | L'enseignant peut voir la liste de tous les eleves avec leur statut actuel | - Grille de cartes avec prenom, avertissements, ligne L-M-J-V, boutons<br>- Mise a jour temps reel | Must | M1 |
-| **FR5** | Le systeme supporte un maximum de 30 eleves par classe | - Message d'erreur si tentative d'ajout au-dela de 30<br>- Ajout bloque | Must | M1 |
+FR1-FR30 sont conservees telles quelles (voir PRD V2.1 initiale).
 
-#### 3.1.2 Systeme d'Avertissements
+#### 3.1.8 Micro par eleve (nouveau V2.1-rev2)
 
 | ID | Description | Criteres d'acceptation | Priorite | Module |
 |----|-------------|----------------------|----------|--------|
-| **FR6** | L'enseignant peut donner un avertissement a un eleve | - 1er avertissement = emoji partiel affiche<br>- 2eme avertissement = indicateur "x2"<br>- Action en < 1 seconde | Must | M1 |
-| **FR7** | Le systeme convertit automatiquement un 3eme avertissement en sanction | - Avertissements remis a 0<br>- Sanction ajoutee automatiquement<br>- Modale propose d'ajouter un motif | Must | M1 |
-| **FR8** | Le systeme reinitialise automatiquement tous les avertissements a 16h30 | - Tous les avertissements passes a 0<br>- Sanctions inchangees<br>- Reset rattrape si app fermee a 16h30 | Must | M1 |
-| **FR9** | L'enseignant peut retirer un avertissement d'un eleve | - Decrementation du compteur<br>- Mise a jour immediate de l'affichage<br>- Pas de passage en dessous de 0 | Must | M1 |
-
-#### 3.1.3 Systeme de Sanctions
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR10** | L'enseignant peut ajouter une sanction a un eleve | - Emoji triste ajoute<br>- Modale de motif obligatoire s'affiche<br>- Sanction persistee en base avec motif | Must | M1 |
-| **FR11** | L'enseignant peut retirer une sanction d'un eleve | - Derniere sanction supprimee<br>- Motif associe egalement supprime<br>- Affichage mis a jour | Must | M1 |
-| **FR12** | Le motif de sanction est obligatoire | - La sanction ne peut pas etre enregistree sans motif<br>- Dropdown avec motifs predefinis + champ libre<br>- Motifs predefinis : "Bavardage", "Insolence", "Violence", "Non-respect des regles", "Autre" | Must | M1 |
-| **FR13** | Le systeme affiche les sanctions sous forme d'emojis tristes | - Chaque sanction = 1 emoji triste<br>- Maximum 10 par semaine par eleve<br>- Alerte visuelle a 10 | Must | M1 |
-| **FR14** | Le systeme reinitialise automatiquement les sanctions chaque lundi | - Sanctions de la semaine precedente archivees<br>- Compteur remis a 0<br>- Historique conserve<br>- Reset rattrape si app fermee le weekend | Must | M1 |
-| **FR15** | L'export JSON inclut les motifs de sanction | - Chaque sanction dans le JSON contient le champ `motif`<br>- Retrocompatibilite avec les exports V1 (motif = null pour anciennes sanctions) | Must | M1 |
-
-#### 3.1.4 Gestion des Absences
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR16** | L'enseignant peut marquer un eleve comme absent | - Bouton "Absent" sur chaque carte<br>- Visuel distinct (carte grisee, icone "ABS")<br>- Label jour dans la ligne hebdo = "ABS" au lieu de emoji | Must | M1 |
-| **FR17** | Un eleve absent n'est pas comptabilise dans les recompenses | - Pas d'attribution de recompense a 16h30 pour un absent<br>- La case du jour reste vide ou affiche "ABS"<br>- Les statistiques excluent les jours d'absence | Must | M1 |
-| **FR18** | L'enseignant peut annuler une absence | - Clic sur le bouton "Absent" (toggle)<br>- La carte redevient normale<br>- L'eleve est de nouveau eligible aux recompenses | Must | M1 |
-
-#### 3.1.5 Systeme de Recompenses
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR19** | Le systeme attribue automatiquement une recompense quotidienne a 16h30 | - 0 avertissement + 0 sanction = emoji plein (parfait)<br>- 1-2 avertissements + 0 sanction = emoji attenue (partiel)<br>- Sanction aujourd'hui = pas de recompense<br>- Absent = pas de recompense | Must | M1 |
-| **FR20** | Les recompenses sont comptabilisees sur 4 jours : L, M, J, V | - Mercredi exclu (jour non travaille)<br>- Ligne hebdomadaire affiche uniquement les jours ecoules<br>- Reset le lundi avec les sanctions | Must | M1 |
-| **FR21** | Une sanction annule la derniere recompense positive de la semaine | - Cherche d'abord un emoji partiel a annuler<br>- Si pas de partiel, annule le dernier emoji plein<br>- Si aucune recompense, la sanction est ajoutee sans annulation | Must | M1 |
-
-#### 3.1.6 Interface en Cartes
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR22** | L'interface affiche les eleves sous forme de grille de cartes | - Ordre alphabetique fixe<br>- Toutes les cartes visibles sans scroll<br>- Adaptation automatique au nombre d'eleves (18-28) | Must | M1 |
-| **FR23** | Chaque carte affiche : prenom, avertissements, ligne L-M-J-V, boutons | - Prenom en en-tete<br>- Avertissements a cote du prenom<br>- Ligne hebdomadaire toujours visible<br>- Boutons Avertir / Sanctionner / Absent | Must | M1 |
-| **FR24** | L'enseignant peut basculer en mode plein ecran TBI | - Touche F11 ou bouton<br>- Grille de cartes en plein ecran<br>- Prenoms lisibles a 6 metres<br>- Emojis clairement distinguables<br>- Echap pour revenir | Must | M1 |
-
-#### 3.1.7 Historique et Export
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR25** | L'enseignant peut consulter le bilan hebdomadaire par eleve | - Vue par semaine<br>- Nombre de sanctions + motifs<br>- Recompenses de la semaine<br>- Navigation sur 36 semaines | Must | M1 |
-| **FR26** | L'enseignant peut exporter toutes les donnees au format JSON | - Export contient : eleves, sanctions (avec motifs), avertissements, recompenses, absences<br>- L'enseignant choisit l'emplacement de sauvegarde<br>- Export par periode ou complet | Must | M1 |
-
-#### 3.1.8 Integration Systeme
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR27** | L'app se lance au demarrage du systeme | - Option autostart activee par defaut<br>- Minimisee dans le tray au lancement | Must | M1 |
-| **FR28** | Icone dans la barre systeme (tray) | - Icone visible<br>- Clic gauche = affiche fenetre<br>- Clic droit = menu (Ouvrir / Quitter) | Must | M1 |
-| **FR29** | Raccourci clavier global pour ouvrir l'app | - Configurable (defaut : Ctrl+Shift+C)<br>- Fonctionne depuis n'importe quelle application<br>- Ouvre en < 1 seconde | Must | M1 |
-| **FR30** | Fermer la fenetre minimise dans le tray | - Le bouton X cache la fenetre<br>- L'app continue en arriere-plan<br>- Les resets automatiques continuent | Must | M1 |
+| **FR70** | L'enseignant peut dicter une observation via le micro sur la carte d'un eleve | - Bouton micro sur chaque carte eleve dans le tableau collectif<br>- **Dual-mode** : tap court (<300ms) = toggle enregistrement continu, press long (>300ms) = push-to-talk<br>- L'eleve est identifie par la carte (pas besoin de le selectionner)<br>- Audio capture WAV PCM 16kHz<br>- Indicateur visuel d'enregistrement (LED, animation) | Must | M1 |
+| **FR71** | Le systeme transcrit et classifie automatiquement l'observation dictee | - Whisper STT → texte editable<br>- LLM classifie le domaine d'apprentissage vise<br>- TranscriptPreview affiche la carte editable avec diff Avant/Apres<br>- L'enseignant peut corriger, reassigner le domaine, valider ou rejeter<br>- L'observation validee alimente `evenements_pedagogiques` | Must | M1 |
+| **FR72** | Le micro sert aussi pour les motifs de sanctions | - Meme bouton micro, contexte different (le systeme detecte si c'est une observation ou un motif)<br>- Le motif vocal est transcrit et associe a la sanction<br>- Le motif est stocke dans `evenements_pedagogiques` (type=motif_sanction) | Should | M1 |
 
 ---
 
-### 3.2 Module 2 — Comportement Individuel (inchange V2)
+### 3.2 Module 2 — Registre d'Appel (nouveau)
 
 | ID | Description | Criteres d'acceptation | Priorite | Module |
 |----|-------------|----------------------|----------|--------|
-| **FR31** | L'enseignant peut acceder a la fiche detaillee d'un eleve | - Navigation depuis la grille de cartes (clic sur le prenom)<br>- Vue individuelle avec historique complet<br>- Retour a la grille en un clic | Must | M2 |
-| **FR32** | L'enseignant peut saisir un incident detaille pour un eleve | - Formulaire : date, heure, type d'evenement, motif, description, intervenant<br>- Types predefinis : "Comportement perturbateur", "Violence", "Insolence", "Non-respect du materiel", "Refus de travail", "Autre"<br>- Intervenant optionnel (defaut = enseignant)<br>- Sauvegarde en base avec FK vers eleve et periode | Must | M2 |
-| **FR33** | L'enseignant peut consulter l'historique chronologique des incidents par eleve | - Liste triee par date decroissante<br>- Filtrage par type d'evenement<br>- Filtrage par periode scolaire<br>- Affichage : date, heure, type, motif, description, intervenant | Must | M2 |
-| **FR34** | L'enseignant peut consulter les incidents par periode scolaire | - Selecteur de periode (trimestre/semestre configures)<br>- Resume par periode : nombre d'incidents par type<br>- Liste detaillee des incidents de la periode | Must | M2 |
-| **FR35** | L'enseignant peut modifier un incident | - Tous les champs sont editables apres saisie<br>- Validation des champs obligatoires | Should | M2 |
-| **FR36** | L'enseignant peut supprimer un incident | - Confirmation requise avant suppression<br>- Suppression definitive | Should | M2 |
-| **FR37** | L'enseignant peut saisir un incident par dictee vocale | - Bouton micro sur le formulaire d'incident<br>- Transcription Whisper du champ description<br>- Correction possible avant validation | Could | M2 |
+| **FR73** | L'enseignant peut faire l'appel du matin et de l'apres-midi | - Grille eleves x jours avec toggle absent/present par demi-journee<br>- Demi-journees : matin et apres-midi<br>- Saisie rapide : un clic par eleve absent | Must | M2 |
+| **FR74** | L'enseignant peut typer chaque absence | - 3 types : justifiee, medicale, injustifiee<br>- Select inline sur chaque absence<br>- Type par defaut configurable | Must | M2 |
+| **FR75** | L'enseignant peut ajouter un motif a chaque absence | - Champ texte ou vocal (micro)<br>- Motif optionnel | Should | M2 |
+| **FR76** | L'enseignant peut marquer un retard | - Retard = present + flag retard (pas une absence)<br>- Toggle retard par eleve | Must | M2 |
+| **FR77** | L'enseignant peut saisir retroactivement | - Date picker pour saisir des absences sur jours passes<br>- Motifs ajoutables apres coup | Must | M2 |
+| **FR78** | Le systeme alerte si 4+ demi-journees injustifiees sur 30 jours | - Calcul glissant sur 30 jours (pas calendaire)<br>- Badge alerte rouge visible uniquement pour l'enseignant<br>- Notification visuelle (pas de mail/courrier) | Must | M2 |
+| **FR79** | Le systeme calcule les totaux d'absences pour le LSU | - Somme auto par periode : demi-journees justifiees + injustifiees (separement)<br>- Integre dans l'export LSU XML | Must | M2 |
 
 ---
 
-### 3.3 Module 3 — Domaines d'Apprentissage (refonde V2.1)
-
-#### 3.3.1 Dictee vocale — Micro unique global
+### 3.3 Module 3 — Evaluations (nouveau, remplace ancien Module 3)
 
 | ID | Description | Criteres d'acceptation | Priorite | Module |
 |----|-------------|----------------------|----------|--------|
-| **FR38** | L'enseignant peut dicter des observations via un micro unique global | - Bouton micro dans la toolbar du Module 3 (pas un par domaine)<br>- Indicateur visuel d'enregistrement (LED rouge, onde sonore)<br>- Push-to-talk (maintenir ou toggle)<br>- Audio capture au format WAV PCM 16-bit 16kHz<br>- Le micro fonctionne pour l'eleve actuellement selectionne | Must | M3 |
-| **FR39** | Le systeme transcrit automatiquement l'audio en texte | - Whisper.cpp sidecar transcrit en francais<br>- Temps de transcription < 5 secondes pour 15 secondes d'audio<br>- Texte affiche dans une zone editable<br>- L'enseignant peut corriger avant structuration | Must | M3 |
-
-#### 3.3.2 Pipeline LLM — Classificateur + Fusionneur
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR40** | Le LLM classifie automatiquement le domaine vise par la dictee et fusionne avec l'existant | - Le LLM recoit : texte dicte + domaines actifs de l'eleve + observations existantes par domaine<br>- Tache 1 : identifier le domaine d'apprentissage vise<br>- Tache 2 : fusionner le nouveau texte avec les observations existantes du domaine identifie, en eliminant les redondances<br>- Le LLM ne genere PAS de nouveau contenu, il reformule/fusionne uniquement ce qui est dicte<br>- Le LLM ne touche JAMAIS le niveau d'evaluation (100% decision du prof)<br>- Output JSON : `{ "domaine_id": N, "observation_mise_a_jour": "texte fusionne" }`<br>- Temps de structuration < 5 secondes | Must | M3 |
-| **FR41** | L'enseignant valide via un panneau de revue diff Avant/Apres | - Panneau affichant pour chaque domaine modifie : texte Avant (existant) et texte Apres (fusionne)<br>- Edition inline du texte Apres<br>- Dropdown de reassignation du domaine (si le LLM s'est trompe de domaine)<br>- Boutons par domaine : Accepter / Modifier / Rejeter<br>- Bouton global "Valider tout"<br>- Insertion via prepared statements Rust apres validation<br>- Confirmation visuelle de l'enregistrement | Must | M3 |
-
-#### 3.3.3 Domaines dynamiques par cycle
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR42** | Les domaines sont charges dynamiquement selon le cycle de l'eleve | - Chaque eleve a un niveau (PS-CM2) determinant son cycle (C1/C2/C3)<br>- Domaines affiches = domaines actifs du cycle de l'eleve<br>- Cycle 1 : 5 domaines, Cycle 2 : 7 domaines, Cycle 3 : 8 domaines<br>- Les domaines s'adaptent automatiquement au changement de niveau | Must | M3 |
-| **FR43** | L'enseignant peut saisir manuellement une appreciation (sans dictee) | - Formulaire : eleve, periode, domaine (liste filtree par cycle), niveau LSU, observations<br>- Alternative a la dictee vocale<br>- Meme resultat en base | Must | M3 |
-| **FR44** | Les domaines d'apprentissage suivent le referentiel officiel par cycle | - Referentiel TS `domaines-officiels.ts` avec hierarchie cycle → domaines<br>- Cycle 3 : Francais, Mathematiques, Sciences et Technologies, Histoire-Geographie, EMC, EPS, Arts Plastiques + Education Musicale, Langues Vivantes<br>- Cycle 2 : Francais, Mathematiques, Questionner le monde, EMC, EPS, Arts, Langues Vivantes<br>- Cycle 1 : Mobiliser le langage, Agir s'exprimer comprendre (activite physique), Agir s'exprimer comprendre (activites artistiques), Construire les premiers outils, Explorer le monde<br>- L'enseignant peut ajouter des domaines custom (`is_custom = true`)<br>- Le changement de niveau propose "Reinitialiser les domaines pour [niveau]" | Must | M3 |
-
-#### 3.3.4 Echelle d'evaluation LSU
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR60** | L'echelle d'evaluation suit les 4 niveaux officiels du LSU | - Niveaux : "Non atteints", "Partiellement atteints", "Atteints", "Depasses"<br>- Valeurs BDD : `non_atteints`, `partiellement_atteints`, `atteints`, `depasses`<br>- Migration automatique des donnees V2 : debut→non_atteints, en_cours_acquisition→partiellement_atteints, maitrise→atteints<br>- Le niveau est 100% choisi par l'enseignant (jamais par le LLM) | Must | M3 |
-
-#### 3.3.5 Undo/Redo des observations
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR61** | L'enseignant peut annuler la derniere modification LLM sur une observation | - Colonne `previous_observations` stocke le texte avant modification LLM<br>- Bouton "Annuler" (undo) par domaine dans le tableau<br>- Swap `observations` ↔ `previous_observations`<br>- Undo disponible tant que `previous_observations` n'est pas null<br>- L'undo restaure uniquement le texte, pas le niveau d'evaluation | Must | M3 |
-
-#### 3.3.6 Appreciation generale
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR62** | L'enseignant peut saisir une appreciation generale par eleve et par periode | - Champ texte libre (max 1500 caracteres, limite LSU)<br>- Bouton "Generer brouillon" envoie toutes les observations de la periode au LLM<br>- Le LLM synthetise un paragraphe (brouillon editable)<br>- L'enseignant modifie librement avant validation<br>- Sauvegarde en base independante des appreciations par domaine | Must | M3 |
+| **FR80** | L'enseignant peut saisir une evaluation | - Formulaire : nom de la lecon, domaine (filtre par cycle eleve), niveau LSU (4 niveaux), observations (texte ou vocal)<br>- L'evaluation est stockee dans `evenements_pedagogiques` (type=evaluation) | Must | M3 |
+| **FR81** | Les domaines sont filtres par le cycle de l'eleve | - Chaque eleve a un niveau (PS-CM2) → cycle (C1/C2/C3)<br>- Domaines filtres automatiquement<br>- C1: 5 domaines, C2: 7 domaines, C3: 8+1 domaines<br>- Domaines custom en complement | Must | M3 |
+| **FR82** | L'enseignant peut saisir par lot (meme lecon, tous les eleves) | - Grille eleves x niveau pour une meme lecon et domaine<br>- Saisie rapide : un clic par eleve pour le niveau<br>- Observations individuelles optionnelles | Should | M3 |
+| **FR83** | L'enseignant peut consulter l'historique des evaluations par eleve | - Timeline chronologique des evaluations<br>- Filtrable par domaine et periode | Must | M3 |
+| **FR84** | L'echelle d'evaluation suit les 4 niveaux LSU officiels | - Non atteints / Partiellement atteints / Atteints / Depasses<br>- Le niveau est 100% decision de l'enseignant (jamais par le LLM) | Must | M3 |
 
 ---
 
-### 3.4 Infrastructure IA
+### 3.4 Module 4 — LSU Vivant (nouveau)
+
+#### 3.4.1 Syntheses par domaine
 
 | ID | Description | Criteres d'acceptation | Priorite | Module |
 |----|-------------|----------------------|----------|--------|
-| **FR45** | Le sidecar whisper-server demarre a la demande pour la transcription | - Demarrage declenche par push-to-talk<br>- Healthcheck HTTP confirme la disponibilite<br>- Arret automatique apres 30 secondes d'inactivite<br>- Watchdog avec restart automatique si reponse vide | Must | IA |
-| **FR46** | Le sidecar llama-server demarre a la demande avec GBNF dynamique | - Demarrage declenche apres validation du texte transcrit<br>- **Grammaire GBNF generee dynamiquement** depuis les domaines actifs de l'eleve en BDD<br>- **System prompt construit cote Rust** : niveau, domaines, observations existantes, instructions classification+fusion<br>- API REST OpenAI-compatible sur localhost<br>- ctx-size = 2048 tokens<br>- Arret automatique apres 60 secondes d'inactivite | Must | IA |
-| **FR47** | Le pipeline s'execute de maniere sequentielle (un seul modele actif) | - Whisper demarre, transcrit, puis s'arrete<br>- Ensuite llama-server demarre, structure, puis s'arrete<br>- Jamais les deux simultanes sur PC 4 Go RAM<br>- Mode concurrent optionnel si PC 8 Go+ detecte | Must | IA |
-| **FR48** | Le LLM genere un JSON de classification et fusion (pas de SQL, pas d'IDs BDD) | - Output LLM contraint par GBNF dynamique<br>- Format : `{ "domaine_id": N, "observation_mise_a_jour": "texte fusionne" }`<br>- Le `domaine_id` est un index local (1-N des domaines actifs), pas un ID BDD<br>- Rust mappe l'index local vers l'ID BDD reel<br>- Le LLM n'a jamais connaissance de la structure BDD | Must | IA |
-| **FR49** | Le validateur Rust verifie chaque sortie LLM avant insertion | - Couche 1 : Prompt contraint (classification+fusion uniquement)<br>- Couche 2 : Grammaire GBNF dynamique (controle au niveau token)<br>- Couche 3 : Validation Rust (domaine_id dans range, texte non vide, longueur < 300 car.)<br>- Couche 4 : Prepared statements SQLite<br>- Rejet avec message d'erreur si validation echoue | Must | IA |
-| **FR50** | Le VAD filtre les silences avant transcription | - Flag `--vad` natif de whisper.cpp<br>- Seuls les segments de parole sont transcrits<br>- Reduction des hallucinations Whisper sur les silences | Must | IA |
+| **FR85** | L'enseignant peut generer une synthese par domaine pour un eleve | - Bouton "Synthetiser" par domaine<br>- Le LLM genere une synthese a partir de toutes les observations/evaluations du domaine pour la periode<br>- La synthese est affichee dans un champ editable<br>- L'enseignant peut modifier vocalement ou manuellement | Must | M4 |
+| **FR86** | La synthese est on-demand, jamais automatique | - Le LLM ne se declenche que quand l'enseignant clique "Synthetiser"<br>- Pas de regeneration automatique apres une nouvelle observation | Must | M4 |
+| **FR87** | Les syntheses sont versionnees | - 4-5 versions en arriere conservees<br>- Bouton "Regenerer" conserve la version precedente<br>- L'enseignant peut restaurer une version anterieure | Must | M4 |
+| **FR88** | Les sources sont depliables sous chaque synthese | - Accordeon affichant les observations/evaluations qui ont nourri la synthese<br>- Lien vers l'evenement source | Should | M4 |
+
+#### 3.4.2 Double vue LSU
+
+| ID | Description | Criteres d'acceptation | Priorite | Module |
+|----|-------------|----------------------|----------|--------|
+| **FR89** | L'enseignant peut voir le LSU par eleve (tous domaines) | - Fiche eleve avec tous les domaines de son cycle<br>- Synthese + niveau par domaine<br>- Appreciation generale en bas | Must | M4 |
+| **FR90** | L'enseignant peut voir le LSU par domaine (tous eleves) | - Liste de tous les eleves pour un domaine donne<br>- Synthese + niveau par eleve<br>- Vue pratique pour verifier la coherence | Must | M4 |
+
+#### 3.4.3 Appreciation generale
+
+| ID | Description | Criteres d'acceptation | Priorite | Module |
+|----|-------------|----------------------|----------|--------|
+| **FR91** | L'enseignant peut generer une appreciation generale par eleve/periode | - Bouton "Generer" envoie toutes les observations + syntheses + patterns comportement au LLM<br>- Le LLM synthetise un paragraphe cross-domaines (max 1500 car. LSU)<br>- Le comportement est formule avec tact (jamais punitif, toujours constructif)<br>- Champ editable (texte ou vocal)<br>- Versionnee (4-5 versions) | Must | M4 |
+
+#### 3.4.4 Export LSU
+
+| ID | Description | Criteres d'acceptation | Priorite | Module |
+|----|-------------|----------------------|----------|--------|
+| **FR92** | L'enseignant peut exporter au format LSU XML | - Generateur Rust quick-xml<br>- Par periode ou annee complete<br>- Export partiel (un seul eleve) possible<br>- Checklist pre-export (completude)<br>- Absences auto-integrees (totaux par periode, justifiees + injustifiees separement)<br>- Fallback CSV/PDF si XML non viable | Should | M4 |
+| **FR93** | L'enseignant peut saisir les identifiants ONDE | - UAI (etablissement), INE (eleve)<br>- Saisie manuelle dans les parametres<br>- Import CSV optionnel (export Base Eleves)<br>- Requis uniquement pour l'export LSU | Should | M4 |
 
 ---
 
-### 3.5 Gestion des Modeles IA (inchange V2)
+### 3.5 Infrastructure IA
 
 | ID | Description | Criteres d'acceptation | Priorite | Module |
 |----|-------------|----------------------|----------|--------|
-| **FR51** | Premier lancement : ecran de telechargement des modeles | - Detection automatique de l'absence des modeles GGUF<br>- Ecran "Configuration initiale" avec barre de progression<br>- Telechargement sequentiel : Whisper small FR (~480 Mo), Qwen 2.5 (~980 Mo)<br>- Verification SHA256<br>- Stockage dans app_data_dir() | Must | IA |
-| **FR52** | Les modeles sont stockes dans le repertoire de donnees de l'application | - Chemin : `AppData/comportement/models/` (Windows), `~/Library/.../comportement/models/` (macOS)<br>- Flag `models_ready` en base apres telechargement reussi<br>- L'app fonctionne sans les modeles (Modules 1 et 2 disponibles, Module 3 desactive) | Must | IA |
-| **FR53** | Installation des modeles depuis une cle USB | - Bouton "Installer depuis un dossier local"<br>- Copie des fichiers GGUF + verification SHA256<br>- Solution alternative si proxy ecole bloque Hugging Face | Must | IA |
+| **FR38** | Le micro dual-mode enregistre et envoie a Whisper | - Tap court (<300ms) = toggle continu, press long (>300ms) = push-to-talk<br>- WAV PCM 16kHz<br>- Whisper STT < 5 secondes pour 15s d'audio | Must | IA |
+| **FR45** | Le sidecar whisper-server demarre a la demande | - Healthcheck HTTP, arret apres 30s inactivite, watchdog restart | Must | IA |
+| **FR46** | Le sidecar llama-server supporte 3 jobs LLM | - Job 1 : classifier domaine (GBNF dynamique, < 5s)<br>- Job 2 : synthetiser par domaine (on-demand, < 10s)<br>- Job 3 : appreciation generale (on-demand, < 15s)<br>- Un seul job a la fois (pipeline sequentiel) | Must | IA |
+| **FR47** | Pipeline sequentiel (inchange) | - Un seul sidecar actif, compatible 4 Go RAM | Must | IA |
+| **FR49** | Validateur 4 couches (inchange) | - Prompt, GBNF, Rust, Prepared Statements | Must | IA |
+| **FR50** | VAD natif (inchange) | - `--vad` whisper.cpp | Must | IA |
 
 ---
 
-### 3.6 Configuration (evolue V2.1)
+### 3.6 Gestion des Modeles IA (inchange V2)
 
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR54** | L'enseignant peut configurer les periodes scolaires | - Choix entre trimestres et semestres<br>- Date de debut et fin pour chaque periode<br>- Periodes rattachees a l'annee scolaire active<br>- Nom d'affichage personnalisable | Must | Config |
-| **FR55** | L'enseignant peut acceder aux parametres de l'application | - Page Parametres accessible depuis le menu<br>- Sections : Annee scolaire, Periodes, Niveaux de classe, Domaines, Modeles IA, LSU, Raccourci clavier, Autostart<br>- Sauvegarde immediate | Must | Config |
-| **FR56** | L'enseignant peut naviguer entre les 3 modules | - Navigation principale (onglets ou menu lateral)<br>- Module 1 = vue par defaut au lancement<br>- Transition fluide entre modules (< 300ms)<br>- Etat conserve lors du changement de module | Must | Config |
+FR51-FR53 conservees.
 
 ---
 
-### 3.7 Capture Audio (inchange V2)
+### 3.7 Configuration (evolue V2.1)
 
 | ID | Description | Criteres d'acceptation | Priorite | Module |
 |----|-------------|----------------------|----------|--------|
-| **FR57** | Le systeme capture l'audio du microphone pour la dictee vocale | - Plan A : tauri-plugin-mic-recorder<br>- Plan B (fallback) : Web Audio API (`getUserMedia`)<br>- Format de sortie : WAV PCM 16-bit, 16kHz, mono<br>- Permission micro demandee au premier usage<br>- Indicateur visuel pendant l'enregistrement | Must | M3 |
+| **FR54** | Configuration des periodes scolaires | - Trimestres ou semestres, dates, rattachees a l'annee active | Must | Config |
+| **FR55** | Page parametres accessible | - Sections : Annee scolaire, Periodes, Niveaux, Domaines, Modeles IA, LSU, Import CSV | Must | Config |
+| **FR56** | Navigation entre les 4 modules | - Module 1 = vue par defaut<br>- Transition < 300ms<br>- Etat conserve | Must | Config |
+| **FR58** | Gestion annee scolaire | - Creation, active unique, cloture → lecture seule, reouverture | Must | Config |
+| **FR59** | Attribution niveaux scolaires par eleve | - PS-CM2, individuel ou masse, niveau → cycle → domaines | Must | Config |
+| **FR94** | Import CSV eleves | - Import fichier CSV (prenom, niveau PS-CM2, optionnel: nom)<br>- Rapport d'import (nb eleves importes, erreurs)<br>- Debut d'annee scolaire | Must | Config |
+| **FR65** | Assistant de rentree (wizard) | - 4 etapes, conserver eleves ou nouvelle classe | Should | Config |
 
 ---
 
-### 3.8 Gestion de l'annee scolaire (nouveau V2.1)
+### 3.8 Capture Audio (inchange V2)
 
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR58** | L'enseignant peut creer et gerer une annee scolaire | - Creation avec label (ex: "2025-2026"), date debut, date fin<br>- Une seule annee active a la fois<br>- Cloture d'annee : double confirmation, passage en lecture seule<br>- Reouverture possible (si cloture par erreur)<br>- L'annee scolaire est le conteneur principal pour periodes, appreciations, incidents | Must | Config |
-| **FR59** | L'enseignant peut attribuer un niveau scolaire a chaque eleve | - Niveaux disponibles : PS, MS, GS, CP, CE1, CE2, CM1, CM2<br>- Attribution individuelle ou en masse (selectionner plusieurs eleves → meme niveau)<br>- Le niveau determine le cycle (C1: PS-GS, C2: CP-CE2, C3: CM1-CM2)<br>- Le cycle conditionne les domaines affiches pour l'eleve<br>- Classes multi-niveaux supportees nativement (ex: CE1+CM2 dans la meme classe) | Must | Config |
-| **FR65** | L'enseignant peut creer une nouvelle annee scolaire via l'assistant de rentree | - Wizard : nom de l'annee, dates, nombre de periodes<br>- Option "Conserver les eleves" (reset donnees, garder prenoms+niveaux)<br>- Option "Nouvelle classe" (partir de zero)<br>- L'ancienne annee est cloturee automatiquement | Should | Config |
-
----
-
-### 3.9 Export LSU (nouveau V2.1)
-
-| ID | Description | Criteres d'acceptation | Priorite | Module |
-|----|-------------|----------------------|----------|--------|
-| **FR63** | L'enseignant peut exporter les donnees au format LSU XML | - Generateur XML cote Rust<br>- Export par periode ou par annee complete<br>- XML conforme a la structure attendue par Pleiade (ONDE/LSU)<br>- Checklist pre-export : verification completude (appreciations remplies, niveaux attribues, identifiants presents)<br>- L'enseignant choisit l'emplacement de sauvegarde<br>- Fallback CSV/PDF si le format XML n'est pas viable (XSD non public) | Should | M3 |
-| **FR64** | L'enseignant peut saisir les identifiants ONDE pour l'export LSU | - Identifiants : UAI (etablissement), INC (inspection), INE (eleve)<br>- Saisie manuelle dans les parametres<br>- Import CSV optionnel (export Base Eleves)<br>- Identifiants requis uniquement pour l'export LSU, pas pour l'usage quotidien | Should | Config |
+FR57 conservee (tauri-plugin-mic-recorder / Web Audio API fallback).
 
 ---
 
@@ -340,727 +302,419 @@ Saisie des appreciations par domaine via dictee vocale avec **micro unique globa
 
 | ID | Description | Cible | Priorite |
 |----|-------------|-------|----------|
-| **NFR1** | Toute action utilisateur (avertir, sanctionner, naviguer) s'execute rapidement | < 1 seconde | Must |
-| **NFR2** | L'app se lance et est utilisable rapidement | < 3 secondes (sans demarrage sidecars) | Must |
-| **NFR3** | L'affichage TBI se met a jour instantanement apres une action | < 500ms | Must |
-| **NFR4** | Le raccourci clavier global ouvre l'app rapidement | < 1 seconde | Must |
-| **NFR5** | Le temps de transcription Whisper est acceptable | < 5 secondes pour 15 secondes d'audio | Must |
-| **NFR6** | Le temps de classification+fusion LLM est acceptable | < 5 secondes par observation (ctx-size 2048) | Must |
-| **NFR7** | Le temps total du pipeline dictee-a-insertion est acceptable | < 15 secondes (dictee, transcription, correction, classification+fusion, revue, validation) | Must |
-| **NFR8** | L'attribution automatique des recompenses a 16h30 est rapide | < 1 seconde pour 30 eleves | Must |
+| **NFR1** | Actions utilisateur rapides | < 1 seconde | Must |
+| **NFR2** | Lancement app | < 3 secondes (sans sidecars) | Must |
+| **NFR3** | Mise a jour TBI | < 500ms | Must |
+| **NFR4** | Raccourci clavier global | < 1 seconde | Must |
+| **NFR5** | Transcription Whisper | < 5 secondes pour 15s audio | Must |
+| **NFR6** | Classification LLM (Job 1) | < 5 secondes | Must |
+| **NFR31** | Synthese LLM (Job 2) | < 10 secondes par domaine | Must |
+| **NFR32** | Appreciation generale LLM (Job 3) | < 15 secondes | Should |
+| **NFR7** | Pipeline total dictee→validation | < 15 secondes | Must |
+| **NFR8** | Attribution recompenses 16h30 | < 1 seconde pour 30 eleves | Must |
 
 ### 4.2 Securite et Conformite RGPD
 
-| ID | Description | Cible | Priorite |
-|----|-------------|-------|----------|
-| **NFR9** | Les donnees ne quittent jamais le poste | Zero connexion reseau apres installation des modeles | Must |
-| **NFR10** | Le LLM ne peut pas executer d'operations destructrices | 4 couches de validation (Prompt, GBNF dynamique, Rust, Prepared Statements) | Must |
-| **NFR11** | Le taux de classification+fusion valide est eleve | > 95% apres validation GBNF + Rust | Must |
-| **NFR12** | Les donnees nominatives restent locales | Prenoms et INE stockes uniquement en SQLite local, pas de telemetrie | Must |
+NFR9-NFR12 conservees.
 
 ### 4.3 Compatibilite et Deploiement
 
-| ID | Description | Cible | Priorite |
-|----|-------------|-------|----------|
-| **NFR13** | L'app fonctionne sur le PC ecole | Windows 10/11, 4 Go RAM minimum, CPU standard (pas de GPU) | Must |
-| **NFR14** | Mode portable sans installateur | .exe unique, pas de modification du registre | Must |
-| **NFR15** | La taille totale de la distribution est raisonnable | < 2 Go (exe + modeles GGUF) | Must |
-| **NFR16** | Le pic de RAM reste dans les limites du PC ecole | < 2 Go en mode sequentiel, ctx-size LLM = 2048 tokens | Must |
-| **NFR17** | Le build cross-platform est supporte | Windows (.exe) prioritaire, macOS (.app) secondaire | Should |
+NFR13-NFR17 conservees.
 
 ### 4.4 Fiabilite
 
-| ID | Description | Cible | Priorite |
-|----|-------------|-------|----------|
-| **NFR18** | Les donnees sont sauvegardees automatiquement apres chaque modification | Sauvegarde SQLite immediate, WAL mode | Must |
-| **NFR19** | Aucune perte de donnees en cas de fermeture inattendue | Durabilite SQLite garantie | Must |
-| **NFR20** | Les resets automatiques (16h30, lundi) s'executent avec 100% de fiabilite | Double verification au lancement + scheduler Rust | Must |
-| **NFR21** | L'app reste stable lors d'une utilisation continue sur une journee complete | Pas de memory leak, pas de freeze | Must |
-| **NFR22** | Le watchdog whisper-server redemarrage automatiquement | Healthcheck + restart apres N requetes ou reponse vide | Must |
+NFR18-NFR22 conservees.
 
 ### 4.5 Accessibilite TBI
 
-| ID | Description | Cible | Priorite |
-|----|-------------|-------|----------|
-| **NFR23** | Les prenoms sont lisibles a distance sur TBI | Lisible a 6 metres | Must |
-| **NFR24** | Contraste eleve entre texte et fond | Ratio minimum 4.5:1 (WCAG AA) | Must |
-| **NFR25** | Les emojis sont grands et distinguables | Taille adaptee au mode TBI | Must |
-| **NFR26** | Pas de clignotements ou animations distrayantes | Animations statiques uniquement | Must |
-| **NFR27** | Palette daltonisme-friendly | Pas de differentiation rouge/vert uniquement | Must |
+NFR23-NFR27 conservees.
 
-### 4.6 Migrations et Donnees (nouveau V2.1)
+### 4.6 Migrations et Donnees (evolue V2.1)
 
 | ID | Description | Cible | Priorite |
 |----|-------------|-------|----------|
-| **NFR28** | Les migrations BDD sont additives et non destructives | Backup automatique de la BDD avant chaque migration, rollback possible, zero perte de donnees | Must |
-| **NFR29** | L'export LSU XML est conforme a la structure attendue | XML valide contre la structure Pleiade (ONDE/LSU), fallback CSV/PDF si XSD indisponible | Should |
-| **NFR30** | L'undo des observations est fiable et instantane | Restauration du texte en < 1 seconde, swap atomique observations ↔ previous_observations, jamais de perte de donnees | Must |
+| **NFR28** | Migrations BDD additives et non destructives | Backup auto, rollback, zero perte | Must |
+| **NFR29** | Export LSU XML conforme | Structure Pleiade, fallback CSV/PDF | Should |
+| **NFR30** | Undo observations fiable | < 1 seconde, swap atomique | Must |
+| **NFR33** | Event sourcing immuable | `evenements_pedagogiques` append-only, jamais de DELETE/UPDATE | Must |
+| **NFR34** | Versioning syntheses | 4-5 versions conservees, restauration possible | Must |
 
 ---
 
 ## 5. Data Model
 
-### 5.1 Schema SQLite complet
+### 5.1 Tables existantes (conservees)
 
-#### Tables V1 (inchangees)
+Tables V1 (`students`, `sanctions`, `daily_rewards`) et V2 (`config_periodes`, `comportement_detail`, `domaines_apprentissage`, `models_status`) conservees.
 
-```sql
-CREATE TABLE students (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  first_name TEXT NOT NULL,
-  warnings INTEGER DEFAULT 0,
-  niveau TEXT CHECK(niveau IN ('PS','MS','GS','CP','CE1','CE2','CM1','CM2')),  -- V2.1
-  annee_id INTEGER REFERENCES annees_scolaires(id),  -- V2.1
-  ine TEXT,  -- V2.1 (identifiant national eleve, optionnel)
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+**Note :** La table `comportement_detail` (Module 2) reste en BDD pour retrocompatibilite mais n'est plus alimentee. Les incidents sont desormais des `evenements_pedagogiques`.
 
-CREATE TABLE sanctions (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  student_id INTEGER NOT NULL,
-  reason TEXT,
-  week_number INTEGER NOT NULL,
-  year INTEGER NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE
-);
+### 5.2 Nouvelles tables V2.1-rev2
 
-CREATE TABLE daily_rewards (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  student_id INTEGER NOT NULL,
-  day_of_week INTEGER NOT NULL CHECK (day_of_week IN (1, 2, 4, 5)),
-  week_number INTEGER NOT NULL,
-  year INTEGER NOT NULL,
-  reward_type TEXT NOT NULL CHECK (reward_type IN ('full', 'partial')),
-  cancelled INTEGER DEFAULT 0,
-  cancelled_by_sanction_id INTEGER,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  FOREIGN KEY (cancelled_by_sanction_id) REFERENCES sanctions(id) ON DELETE SET NULL,
-  UNIQUE(student_id, day_of_week, week_number, year)
-);
-
-CREATE TABLE absences (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  student_id INTEGER NOT NULL,
-  date TEXT NOT NULL,
-  week_number INTEGER NOT NULL,
-  year INTEGER NOT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE,
-  UNIQUE(student_id, date)
-);
-```
-
-#### Tables V2.1 — Annee scolaire (nouveau)
+#### Evenements pedagogiques (event sourcing)
 
 ```sql
-CREATE TABLE annees_scolaires (
+CREATE TABLE evenements_pedagogiques (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  label TEXT NOT NULL,           -- ex: "2025-2026"
-  date_debut DATE NOT NULL,
-  date_fin DATE NOT NULL,
-  active INTEGER DEFAULT 1,      -- 1 = annee en cours
-  cloturee INTEGER DEFAULT 0,    -- 1 = lecture seule
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE niveaux_classe (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  annee_id INTEGER NOT NULL REFERENCES annees_scolaires(id),
-  niveau TEXT NOT NULL CHECK(niveau IN ('PS','MS','GS','CP','CE1','CE2','CM1','CM2')),
-  cycle TEXT NOT NULL CHECK(cycle IN ('C1','C2','C3')),
-  UNIQUE(annee_id, niveau)
-);
-
-CREATE INDEX idx_niveaux_annee ON niveaux_classe(annee_id);
-```
-
-#### Tables V2 — Configuration des Periodes (evoluee V2.1)
-
-```sql
-CREATE TABLE config_periodes (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  annee_scolaire TEXT NOT NULL,
-  annee_id INTEGER REFERENCES annees_scolaires(id),  -- V2.1
-  type_periode TEXT NOT NULL CHECK(type_periode IN ('trimestre', 'semestre')),
-  numero INTEGER NOT NULL,
-  date_debut DATE NOT NULL,
-  date_fin DATE NOT NULL,
-  nom_affichage TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_periodes_annee ON config_periodes(annee_scolaire);
-CREATE INDEX idx_periodes_annee_id ON config_periodes(annee_id);
-CREATE INDEX idx_periodes_dates ON config_periodes(date_debut, date_fin);
-```
-
-#### Tables V2 — Module 2 : Comportement Individuel (inchange)
-
-```sql
-CREATE TABLE comportement_detail (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  uuid TEXT UNIQUE,                          -- future sync mobile (V4)
   eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
-  date_incident DATE NOT NULL,
-  heure_incident TIME,
+  annee_scolaire_id INTEGER NOT NULL REFERENCES annees_scolaires(id),
   periode_id INTEGER REFERENCES config_periodes(id),
-  type_evenement TEXT NOT NULL,
-  motif TEXT NOT NULL,
-  description TEXT,
-  intervenant TEXT DEFAULT 'Enseignant',
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  type TEXT NOT NULL CHECK(type IN ('observation', 'evaluation', 'motif_sanction')),
+  domaine_id INTEGER REFERENCES domaines_apprentissage(id),  -- NULL si observation diverse
+  lecon TEXT,                                -- NULL si pas evaluation
+  niveau_lsu TEXT CHECK(niveau_lsu IN (
+    'non_atteints', 'partiellement_atteints', 'atteints', 'depasses'
+  )),                                        -- NULL si observation
+  observations TEXT,
+  texte_dictation TEXT,                      -- transcription brute Whisper
+  source TEXT DEFAULT 'manual' CHECK(source IN ('vocal', 'manual')),
+  created_at TEXT DEFAULT (datetime('now')),
+  synced_at TEXT                              -- future sync mobile (V4)
 );
 
-CREATE INDEX idx_detail_eleve ON comportement_detail(eleve_id);
-CREATE INDEX idx_detail_periode ON comportement_detail(periode_id);
-CREATE INDEX idx_detail_date ON comportement_detail(date_incident);
-CREATE INDEX idx_detail_type ON comportement_detail(type_evenement);
+CREATE INDEX idx_events_eleve ON evenements_pedagogiques(eleve_id);
+CREATE INDEX idx_events_annee ON evenements_pedagogiques(annee_scolaire_id);
+CREATE INDEX idx_events_periode ON evenements_pedagogiques(periode_id);
+CREATE INDEX idx_events_domaine ON evenements_pedagogiques(domaine_id);
+CREATE INDEX idx_events_type ON evenements_pedagogiques(type);
 ```
 
-#### Tables V2.1 — Module 3 : Domaines d'Apprentissage (evolue)
+#### Syntheses LSU (versionnees)
 
 ```sql
--- Domaines parametrables — enrichis V2.1
-CREATE TABLE domaines_apprentissage (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  nom TEXT NOT NULL,
-  cycle TEXT CHECK(cycle IN ('C1','C2','C3')),          -- V2.1
-  code_lsu TEXT,                                         -- V2.1 (code officiel LSU)
-  is_custom INTEGER DEFAULT 0,                           -- V2.1 (0=officiel, 1=custom)
-  ordre_affichage INTEGER DEFAULT 0,
-  actif INTEGER DEFAULT 1,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  -- Note: UNIQUE sur nom RETIRE — meme nom possible dans 2 cycles
-);
-
-CREATE INDEX idx_domaines_cycle ON domaines_apprentissage(cycle);
-
--- Appreciations — evoluees V2.1
-CREATE TABLE appreciations (
+CREATE TABLE syntheses_lsu (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   periode_id INTEGER NOT NULL REFERENCES config_periodes(id),
   domaine_id INTEGER NOT NULL REFERENCES domaines_apprentissage(id),
-  date_evaluation DATE,
-  niveau_lsu TEXT CHECK(niveau_lsu IN (
-    'non_atteints', 'partiellement_atteints', 'atteints', 'depasses'
-  )),                                                    -- V2.1 : 4 niveaux LSU
-  observations TEXT,
-  previous_observations TEXT,                            -- V2.1 : undo/redo
-  texte_dictation TEXT,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  version INTEGER DEFAULT 1,
+  contenu TEXT NOT NULL,
+  generated_by TEXT DEFAULT 'llm' CHECK(generated_by IN ('llm', 'manual')),
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
-CREATE INDEX idx_appreciations_eleve ON appreciations(eleve_id);
-CREATE INDEX idx_appreciations_periode ON appreciations(periode_id);
-CREATE INDEX idx_appreciations_domaine ON appreciations(domaine_id);
+CREATE INDEX idx_syntheses_eleve ON syntheses_lsu(eleve_id);
+CREATE INDEX idx_syntheses_periode ON syntheses_lsu(periode_id);
+CREATE INDEX idx_syntheses_domaine ON syntheses_lsu(domaine_id);
+```
 
--- Appreciation generale par eleve/periode — V2.1
+#### Appreciations generales (versionnees)
+
+```sql
 CREATE TABLE appreciations_generales (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   periode_id INTEGER NOT NULL REFERENCES config_periodes(id),
-  texte TEXT,                                            -- max 1500 car. (limite LSU)
-  genere_par_llm INTEGER DEFAULT 0,                      -- 1 si brouillon LLM
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(eleve_id, periode_id)
+  version INTEGER DEFAULT 1,
+  contenu TEXT NOT NULL,
+  generated_by TEXT DEFAULT 'llm' CHECK(generated_by IN ('llm', 'manual')),
+  created_at TEXT DEFAULT (datetime('now'))
 );
 
 CREATE INDEX idx_appre_gen_eleve ON appreciations_generales(eleve_id);
+CREATE INDEX idx_appre_gen_periode ON appreciations_generales(periode_id);
 ```
 
-#### Tables V2.1 — Configuration LSU (nouveau)
+#### Absences refonte (demi-journee)
 
 ```sql
-CREATE TABLE config_lsu (
+CREATE TABLE absences_v2 (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  annee_id INTEGER NOT NULL REFERENCES annees_scolaires(id),
-  uai TEXT,              -- Unité Administrative Immatriculée (code établissement)
-  inc TEXT,              -- Inspection (code inspection)
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(annee_id)
+  eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  date TEXT NOT NULL,                        -- YYYY-MM-DD
+  demi_journee TEXT NOT NULL CHECK(demi_journee IN ('matin', 'apres_midi')),
+  type_absence TEXT NOT NULL CHECK(type_absence IN ('justifiee', 'medicale', 'injustifiee')),
+  motif TEXT,
+  retard INTEGER DEFAULT 0,                  -- present mais en retard
+  annee_scolaire_id INTEGER NOT NULL REFERENCES annees_scolaires(id),
+  created_at TEXT DEFAULT (datetime('now')),
+  UNIQUE(eleve_id, date, demi_journee)
 );
+
+CREATE INDEX idx_absences_v2_eleve ON absences_v2(eleve_id);
+CREATE INDEX idx_absences_v2_annee ON absences_v2(annee_scolaire_id);
+CREATE INDEX idx_absences_v2_date ON absences_v2(date);
 ```
 
-#### Tables V2 — Infrastructure IA (inchange)
+### 5.3 Tables conservees de V2.1 initiale
 
-```sql
-CREATE TABLE models_status (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  model_name TEXT NOT NULL UNIQUE,
-  file_path TEXT NOT NULL,
-  file_size INTEGER,
-  sha256 TEXT,
-  installed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  version TEXT
-);
-```
+- `annees_scolaires` (creation/active/cloture)
+- `niveaux_classe` (niveaux presents par annee)
+- `config_lsu` (UAI, INC)
+- Colonnes ajoutees : `students.niveau`, `students.annee_id`, `students.ine`
+- `domaines_apprentissage` enrichi (cycle, code_lsu, is_custom)
 
-### 5.2 Donnees initiales (seed) — V2.1
+### 5.4 Tables deprecated
 
-```sql
--- Domaines d'apprentissage officiels par cycle
+- `appreciations` : conservee pour retrocompatibilite donnees V2 existantes, plus alimentee
+- `comportement_detail` : conservee pour retrocompatibilite, plus alimentee
 
--- Cycle 1 (PS, MS, GS)
-INSERT INTO domaines_apprentissage (nom, cycle, code_lsu, is_custom, ordre_affichage) VALUES
-  ('Mobiliser le langage dans toutes ses dimensions', 'C1', 'LGA', 0, 1),
-  ('Agir, s''exprimer, comprendre a travers l''activite physique', 'C1', 'APH', 0, 2),
-  ('Agir, s''exprimer, comprendre a travers les activites artistiques', 'C1', 'AAR', 0, 3),
-  ('Construire les premiers outils pour structurer sa pensee', 'C1', 'OPS', 0, 4),
-  ('Explorer le monde', 'C1', 'EXM', 0, 5);
-
--- Cycle 2 (CP, CE1, CE2)
-INSERT INTO domaines_apprentissage (nom, cycle, code_lsu, is_custom, ordre_affichage) VALUES
-  ('Francais', 'C2', 'FRA', 0, 1),
-  ('Mathematiques', 'C2', 'MAT', 0, 2),
-  ('Questionner le monde', 'C2', 'QLM', 0, 3),
-  ('Enseignement Moral et Civique', 'C2', 'EMC', 0, 4),
-  ('Education Physique et Sportive', 'C2', 'EPS', 0, 5),
-  ('Arts', 'C2', 'ART', 0, 6),
-  ('Langues Vivantes', 'C2', 'LVE', 0, 7);
-
--- Cycle 3 (CM1, CM2)
-INSERT INTO domaines_apprentissage (nom, cycle, code_lsu, is_custom, ordre_affichage) VALUES
-  ('Francais', 'C3', 'FRA', 0, 1),
-  ('Mathematiques', 'C3', 'MAT', 0, 2),
-  ('Sciences et Technologies', 'C3', 'SCT', 0, 3),
-  ('Histoire-Geographie', 'C3', 'HGE', 0, 4),
-  ('Enseignement Moral et Civique', 'C3', 'EMC', 0, 5),
-  ('Education Physique et Sportive', 'C3', 'EPS', 0, 6),
-  ('Arts Plastiques', 'C3', 'APL', 0, 7),
-  ('Education Musicale', 'C3', 'EMU', 0, 8),
-  ('Langues Vivantes', 'C3', 'LVE', 0, 9);
-```
-
-### 5.3 Migrations V2 → V2.1
-
-```sql
--- Migration 1 : Table annees_scolaires
-CREATE TABLE IF NOT EXISTS annees_scolaires (...);
-
--- Migration 2 : Colonnes sur students
-ALTER TABLE students ADD COLUMN niveau TEXT;
-ALTER TABLE students ADD COLUMN annee_id INTEGER REFERENCES annees_scolaires(id);
-ALTER TABLE students ADD COLUMN ine TEXT;
-
--- Migration 3 : Table niveaux_classe
-CREATE TABLE IF NOT EXISTS niveaux_classe (...);
-
--- Migration 4 : Echelle LSU sur appreciations
-ALTER TABLE appreciations ADD COLUMN niveau_lsu TEXT;
-ALTER TABLE appreciations ADD COLUMN previous_observations TEXT;
--- Migration donnees existantes :
-UPDATE appreciations SET niveau_lsu = CASE
-  WHEN niveau = 'debut' THEN 'non_atteints'
-  WHEN niveau = 'en_cours_acquisition' THEN 'partiellement_atteints'
-  WHEN niveau = 'maitrise' THEN 'atteints'
-  ELSE NULL
-END;
-
--- Migration 5 : Enrichissement domaines_apprentissage
-ALTER TABLE domaines_apprentissage ADD COLUMN cycle TEXT;
-ALTER TABLE domaines_apprentissage ADD COLUMN code_lsu TEXT;
-ALTER TABLE domaines_apprentissage ADD COLUMN is_custom INTEGER DEFAULT 0;
--- Marquer les domaines existants comme C3 (CM2 actuel)
-UPDATE domaines_apprentissage SET cycle = 'C3', is_custom = 0;
-
--- Migration 6 : FK annee_id sur config_periodes
-ALTER TABLE config_periodes ADD COLUMN annee_id INTEGER;
-
--- Migration 7 : Table appreciations_generales
-CREATE TABLE IF NOT EXISTS appreciations_generales (...);
-
--- Migration 8 : Table config_lsu
-CREATE TABLE IF NOT EXISTS config_lsu (...);
-```
-
-### 5.4 Relations entre tables
+### 5.5 Relations
 
 ```
-annees_scolaires (conteneur principal V2.1)
+annees_scolaires (conteneur principal)
   |
-  +--< niveaux_classe (niveaux presents dans la classe cette annee)
+  +--< evenements_pedagogiques.annee_scolaire_id
+  +--< absences_v2.annee_scolaire_id
+  +--< niveaux_classe.annee_id
   +--< config_periodes.annee_id
   +--< students.annee_id
   +--< config_lsu.annee_id
 
 students (table centrale)
-  |  (warnings = colonne INTEGER, reset quotidien)
   |  (niveau = PS-CM2, determine le cycle → domaines)
   |
-  +--< sanctions (1:N, reset hebdo, motif obligatoire)
-  +--< daily_rewards (1:N, 1 par jour travaille L-M-J-V)
-  +--< absences (1:N)
-  +--< comportement_detail (1:N, Module 2, FK periode)
-  +--< appreciations (1:N, Module 3, FK periode + domaine)
-  +--< appreciations_generales (1:N, V2.1, FK periode)
+  +--< evenements_pedagogiques (1:N, observations/evaluations/motifs)
+  +--< syntheses_lsu (1:N, par domaine et periode, versionnees)
+  +--< appreciations_generales (1:N, par periode, versionnees)
+  +--< absences_v2 (1:N, par demi-journee)
+  +--< sanctions (1:N, comportement)
+  +--< daily_rewards (1:N)
 
 config_periodes
   |
-  +--< comportement_detail.periode_id
-  +--< appreciations.periode_id
+  +--< evenements_pedagogiques.periode_id
+  +--< syntheses_lsu.periode_id
   +--< appreciations_generales.periode_id
 
-domaines_apprentissage (filtres par cycle de l'eleve)
+domaines_apprentissage (filtres par cycle)
   |
-  +--< appreciations.domaine_id
+  +--< evenements_pedagogiques.domaine_id
+  +--< syntheses_lsu.domaine_id
 ```
 
 ---
 
 ## 6. User Interaction Flows
 
-### 6.1 Flow : Dictee vocale et classification+fusion (Module 3 — refonde V2.1)
+### 6.1 Flow : Observation spontanee via micro (Module 1)
 
 ```
-1. Enseignant selectionne un eleve dans le tableau des appreciations
-2. Appuie sur le micro unique global (toolbar)
-   → Indicateur visuel "Enregistrement en cours"
-   → Audio capture en WAV PCM 16kHz
-
-3. Relache le bouton (fin d'enregistrement)
-   → [SIDECAR] whisper-server demarre (si pas deja actif)
-   → [SIDECAR] Whisper transcrit l'audio en texte (~3-5s)
-   → [SIDECAR] whisper-server s'arrete
-   → Texte affiche dans une zone editable
-
-4. Enseignant verifie/corrige le texte transcrit
-   → Peut corriger les erreurs de transcription
-   → Bouton "Structurer" pour lancer le LLM
-
-5. Clic sur "Structurer"
-   → [RUST] Recupere domaines actifs de l'eleve (selon son cycle)
-   → [RUST] Recupere observations existantes par domaine pour la periode
-   → [RUST] Genere GBNF dynamique + system prompt contextuel
-   → [SIDECAR] llama-server demarre avec GBNF dynamique (ctx-size 2048)
-   → [SIDECAR] LLM classifie le domaine + fusionne texte (~3-5s)
-   → [SIDECAR] llama-server s'arrete
-   → [RUST] Valide le JSON (domaine dans range, texte non vide)
-
-6. Panneau de revue diff s'affiche
-   → Pour chaque domaine modifie : texte Avant | texte Apres
-   → Edition inline du texte Apres
-   → Dropdown reassignation domaine (si erreur de classification)
-   → Boutons : Accepter / Modifier / Rejeter (par domaine)
-   → Bouton "Valider tout"
-
-7. Enseignant valide
-   → [RUST] previous_observations = ancien texte (pour undo)
-   → [RUST] Prepared statement UPDATE execute
-   → Confirmation visuelle
-   → Retour au tableau des appreciations
+1. L'enseignant voit un eleve qui progresse/regresse
+2. Tap court (<300ms) sur le micro de la carte de l'eleve → toggle enregistrement
+   OU press long (>300ms) → push-to-talk (relache = stop)
+3. Dicte pendant 30s-2min
+4. Whisper STT → texte editable (TranscriptPreview)
+5. LLM classifie le domaine automatiquement
+6. Carte editable avec diff Avant/Apres, reassignation domaine possible
+7. Valider → evenements_pedagogiques (type=observation, domaine=auto)
+   OU Rejeter → rien ne se passe
 ```
 
-### 6.2 Flow : Sanction avec motif obligatoire (Module 1 — inchange)
+### 6.2 Flow : Appel du matin/apres-midi (Module 2)
 
 ```
-1. Eleve perturbe la classe
-2. Enseignant clique sur la carte de l'eleve
-3. Clique sur le bouton "Sanctionner"
-4. Modale s'affiche avec :
-   - Dropdown motifs predefinis (Bavardage, Insolence, Violence, Non-respect, Autre)
-   - Champ libre pour precisions
-   - Bouton "Valider" (actif uniquement si motif selectionne)
-5. Enseignant selectionne un motif et valide
-   → Sanction enregistree avec motif
-   → Emoji triste ajoute sur la carte
-   → Derniere recompense positive annulee (si applicable)
-   → Affichage TBI mis a jour
+1. Enseignant ouvre le Registre d'appel
+2. Grille eleves affichee (defaut: tous presents)
+3. Toggle absent pour chaque eleve absent
+4. Pour chaque absent : select type (justifiee/medicale/injustifiee)
+5. Optionnel : ajouter motif (texte ou vocal)
+6. Si retard : toggle retard (present + flag)
+7. Les totaux se calculent automatiquement
+8. Si 4+ injustifiees/30j : badge alerte rouge s'affiche
 ```
 
-### 6.3 Flow : Saisie d'un incident detaille (Module 2 — inchange)
+### 6.3 Flow : Saisie evaluation (Module 3)
 
 ```
-1. Enseignant clique sur le prenom d'un eleve (ou navigue vers Module 2)
-2. Fiche individuelle de l'eleve s'affiche
-3. Clique sur "Nouvel incident"
-4. Formulaire :
-   - Date (defaut : aujourd'hui)
-   - Heure (defaut : heure actuelle)
-   - Type d'evenement (dropdown)
-   - Motif (champ texte obligatoire)
-   - Description (champ texte optionnel, micro dictee optionnel)
-   - Intervenant (defaut : Enseignant)
-5. Enregistrement → incident ajoute a l'historique
+1. Enseignant ouvre le Module Evaluations
+2. Selectionne l'eleve (ou mode lot : tous les eleves)
+3. Saisit le nom de la lecon
+4. Selectionne le domaine (filtre par cycle)
+5. Selectionne le niveau LSU (4 niveaux)
+6. Ajoute des observations (texte ou vocal)
+7. Valider → evenements_pedagogiques (type=evaluation)
 ```
 
-### 6.4 Flow : Marquage d'absence (Module 1 — inchange)
+### 6.4 Flow : Generation synthese LSU (Module 4)
 
 ```
-1. Eleve absent
-2. Enseignant clique sur "ABS" sur la carte
-3. La carte se grise, icone "ABS" affichee
-4. A 16h30 : pas de recompense pour cet eleve
-5. Dans la ligne L-M-J-V : case du jour = "ABS"
-6. Si l'eleve revient : re-clic sur "ABS" pour annuler
+1. Enseignant ouvre LSU Vivant → vue par eleve
+2. Selectionne un eleve
+3. Voit les domaines de son cycle avec les syntheses existantes
+4. Clique "Synthetiser" sur un domaine
+5. LLM Job 2 genere une synthese a partir de toutes les observations/evaluations
+6. Synthese affichee dans champ editable
+7. Enseignant modifie si besoin (texte ou vocal)
+8. Valider → syntheses_lsu (version N+1, conserve N-1 a N-4)
 ```
 
-### 6.5 Flow : Premier lancement (telechargement modeles — inchange)
+### 6.5 Flow : Appreciation generale (Module 4)
 
 ```
-1. L'enseignant lance l'app pour la premiere fois
-2. L'app detecte l'absence des modeles GGUF
-3. Ecran "Configuration initiale" :
-   - "Pour utiliser la dictee vocale, des modeles IA doivent etre installes (~1.5 Go)"
-   - Bouton "Telecharger depuis internet"
-   - Bouton "Installer depuis un dossier local (cle USB)"
-4a. Si telechargement internet :
-   - Barre de progression pour chaque modele
-   - Verification SHA256
-   - Confirmation "Modeles installes avec succes"
-4b. Si installation USB :
-   - Selecteur de dossier
-   - Copie + verification SHA256
-   - Confirmation
-5. Les Modules 1 et 2 sont utilisables immediatement
-6. Le Module 3 devient actif apres installation des modeles
+1. Enseignant ouvre LSU Vivant → vue par eleve
+2. Section "Appreciation generale" en bas
+3. Clique "Generer"
+4. LLM Job 3 synthetise cross-domaines + comportement avec tact
+5. Brouillon affiche dans champ editable (max 1500 car.)
+6. Enseignant modifie librement
+7. Valider → appreciations_generales (version N+1)
 ```
 
-### 6.6 Flow : Configuration des periodes scolaires (inchange)
+### 6.6 Flow : Export LSU XML (Module 4)
 
 ```
-1. Enseignant va dans Parametres
-2. Section "Periodes scolaires"
-3. Choix : Trimestres (3 periodes) ou Semestres (2 periodes)
-4. Pour chaque periode :
-   - Nom d'affichage (ex: "Trimestre 1")
-   - Date de debut
-   - Date de fin
-5. Validation → periodes enregistrees en base
-6. Les Modules 2 et 3 utilisent ces periodes comme reference
+1. Enseignant ouvre LSU Vivant → Export
+2. Checklist pre-export :
+   - Identifiants ONDE (UAI, INE par eleve)
+   - Syntheses par domaine (% completude)
+   - Appreciations generales (presence par eleve)
+   - Niveaux LSU attribues (% completude)
+   - Absences comptabilisees
+3. Selection : periode ou annee, un eleve ou tous
+4. Exporter → XML genere via Rust quick-xml
+5. Si XSD non public : fallback CSV/PDF
 ```
 
-### 6.7 Flow : Creation d'une annee scolaire (nouveau V2.1)
+### 6.7 Flow : Undo observation/synthese
 
 ```
-1. Enseignant va dans Parametres > Annee scolaire
-2. Clique sur "Nouvelle annee scolaire"
-3. Wizard etape 1 — Informations :
-   - Label (ex: "2026-2027")
-   - Date de debut, Date de fin
-4. Wizard etape 2 — Niveaux :
-   - Cocher les niveaux presents dans la classe (ex: CM1 + CM2)
-   - Les cycles correspondants sont affiches automatiquement
-5. Wizard etape 3 — Eleves :
-   - Option A : "Conserver les eleves de l'annee precedente" (reset donnees, garder prenoms+niveaux)
-   - Option B : "Nouvelle classe" (partir de zero)
-6. Wizard etape 4 — Periodes :
-   - Configuration rapide des periodes (trimestres ou semestres)
-7. Validation
-   → Ancienne annee cloturee automatiquement (si applicable)
-   → Nouvelle annee active
-   → Domaines charges selon les niveaux selectionnes
+1. Enseignant constate une erreur sur une synthese/observation
+2. Bouton versions → liste des 4-5 dernieres versions
+3. Selectionne la version a restaurer
+4. Confirmation → version restauree
+   (observations : swap atomique previous_observations)
+   (syntheses : nouvelle version = copie de l'ancienne)
 ```
 
-### 6.8 Flow : Export LSU XML (nouveau V2.1)
+### 6.8 Flows conserves
 
-```
-1. Enseignant va dans Module 3 > Export LSU
-2. Checklist pre-export s'affiche :
-   - [ ] Tous les domaines de chaque eleve ont un niveau attribue
-   - [ ] Appreciation generale remplie pour chaque eleve
-   - [ ] Identifiants ONDE configures (UAI, INE)
-   - Elements manquants surlignés en rouge
-3. Enseignant complete les elements manquants (ou choisit d'exporter quand meme)
-4. Selection de la periode a exporter (ou annee complete)
-5. Clic sur "Exporter"
-   → [RUST] Generation du fichier XML
-   → Boite de dialogue pour choisir l'emplacement
-   → Confirmation "Export LSU genere avec succes"
-6. Si XML non viable (XSD non public) : fallback CSV ou PDF
-```
-
-### 6.9 Flow : Undo d'une modification LLM (nouveau V2.1)
-
-```
-1. L'enseignant constate que la fusion LLM a degrade une observation
-2. Sur la ligne du domaine concerne, clique sur "Annuler"
-3. Le texte d'avant la modification est restaure
-   → observations = previous_observations (swap)
-   → Confirmation visuelle "Observation restauree"
-4. Le bouton "Annuler" disparait (undo = un seul niveau)
-```
-
-### 6.10 Flow : Generation de l'appreciation generale (nouveau V2.1)
-
-```
-1. Enseignant selectionne un eleve dans le Module 3
-2. Clique sur "Appreciation generale" (onglet ou section dediee)
-3. Si aucune appreciation n'existe pour cette periode :
-   → Champ texte vide + bouton "Generer brouillon"
-4. Clic sur "Generer brouillon"
-   → [RUST] Recupere toutes les observations de l'eleve pour la periode en cours
-   → [SIDECAR] llama-server demarre avec prompt de synthese
-   → [SIDECAR] LLM synthetise un paragraphe (~3-5s)
-   → [SIDECAR] llama-server s'arrete
-   → [RUST] Valide la longueur (< 1500 car.)
-   → Texte affiche dans le champ editable (marque "brouillon LLM")
-5. Enseignant modifie librement le texte
-   → Edition inline, pas de contrainte de format
-   → Compteur de caracteres visible (limite 1500 LSU)
-6. Clic sur "Enregistrer"
-   → Sauvegarde en base (appreciations_generales)
-   → Confirmation visuelle
-7. Modification ulterieure possible (le brouillon LLM n'ecrase jamais un texte existant sans confirmation)
-```
+- 6.7 (ancien) : Sanction avec motif obligatoire (inchange)
+- 6.5 (ancien) : Premier lancement / telechargement modeles (inchange)
+- 6.6 (ancien) : Configuration periodes scolaires (inchange)
+- 6.7 (ancien) : Creation annee scolaire (inchange)
 
 ---
 
 ## 7. Constraints & Assumptions
 
-### 7.1 Contraintes techniques
+### 7.1 Contraintes techniques (conservees + ajouts)
 
 | Contrainte | Impact | Mitigation |
 |------------|--------|------------|
-| **PC ecole 4 Go RAM** | Les deux sidecars ne peuvent pas tourner simultanement | Pipeline sequentiel obligatoire |
-| **Pas de GPU** | Inference CPU uniquement | Whisper.cpp et llama.cpp optimises CPU (AVX2, ARM NEON) |
-| **Proxy ecole** | Peut bloquer le telechargement des modeles | Solution USB alternative (FR53) |
-| **Mode portable** | Pas d'installateur, pas de modification registre | .exe unique + modeles dans AppData |
-| **Windows SmartScreen** | Peut bloquer l'exe non signe | Mode portable eprouve en V1 |
-| **Pas de WiFi fiable** | L'app doit fonctionner 100% offline apres installation | Aucune connexion reseau post-installation |
-| **XSD LSU non public** | Le schema XML officiel (Pleiade) n'est pas distribue | Reverse-engineer depuis Opencomp/Gepi (open source) + fallback CSV/PDF |
-| **ctx-size LLM limite** | En fin de periode, observations cumulees peuvent depasser le contexte | ctx-size monte a 2048, resume des observations si depassement |
-| **Mise a jour manuelle** | Pas d'auto-updater (mode portable, pas d'installateur) | L'enseignant remplace manuellement le .exe. Notification visuelle de version dans Settings (compare version locale vs version attendue). Distribution par l'administration ou telechargement direct. |
+| **PC ecole 4 Go RAM** | Pipeline sequentiel obligatoire | Un seul sidecar actif |
+| **Pas de GPU** | Inference CPU uniquement | Whisper.cpp + llama.cpp optimises CPU |
+| **Mode portable** | .exe unique | Modeles dans AppData |
+| **100% offline** | Pas de cloud | Tout local |
+| **3 jobs LLM** | Plus de temps total si les 3 sont lances | On-demand, pas automatique |
+| **Event sourcing append-only** | Table peut grossir | Archive annuelle, VACUUM |
+| **XSD LSU non public** | Reverse-engineering | Fallback CSV/PDF |
 
-### 7.2 Contraintes metier
+### 7.2 Contraintes metier (conservees + ajouts)
 
 | Contrainte | Description |
 |------------|-------------|
-| **Utilisateur unique** | Un seul enseignant, une seule classe (plusieurs niveaux possible) |
-| **18 eleves actuels** | Effectif reel, systeme supporte jusqu'a 30 |
-| **Calendrier scolaire francais** | 4 jours travailles (L, M, J, V), mercredi exclu |
-| **Prenoms immuables** | L'orthographe des prenoms ne change jamais |
-| **Periodes variables** | Trimestres ou semestres selon l'ecole/circonscription |
-| **Classes multi-niveaux** | Un eleve CE1 et un eleve CM2 dans la meme classe = domaines differents |
-| **Echelle LSU officielle** | 4 niveaux : Non atteints / Partiellement atteints / Atteints / Depasses |
-| **Limite caracteres LSU** | Appreciation generale : 1500 car. max, appreciation disciplinaire : 300 car. max |
+| **Mono-user** | Un enseignant, une classe, une DB |
+| **18 eleves** | Effectif reel, max 30 |
+| **Multi-niveaux** | PS-CM2 dans la meme classe |
+| **Double saisie appel** | Papier (officiel) + app (calcul auto) |
+| **Sanctions ≠ apprentissage** | Jamais melanges |
+| **Synthese on-demand** | Jamais automatique |
+| **Comportement avec tact** | Le LLM formule toujours positivement |
 
-### 7.3 Assumptions
+### 7.3 Hors scope V2.1
 
-| Assumption | Justification |
-|------------|---------------|
-| Le PC ecole dispose d'un microphone | Micro USB externe si absent |
-| Whisper small FR est suffisant pour le francais parle avec accents | Recherche technique confirme |
-| Qwen 2.5 Coder 1.5B classifie correctement le domaine > 90% du temps | Le panneau de revue + dropdown reassignation couvre les erreurs |
-| L'enseignant accepte un temps de pipeline de ~15 secondes | Gain de temps par rapport a la saisie manuelle |
-| Le mode sequentiel suffit pour l'usage en classe | L'enseignant ne fait pas 2 dictees en parallele |
-| La stack V1 (Tauri + React + SQLite + Zustand) est stable | 3+ mois de production quotidienne |
-| Qwen 2.5 0.5B pourrait suffire pour classification+fusion | Benchmark a realiser (V2.1 Sprint B) |
+| Feature | Version cible |
+|---------|--------------|
+| Canvas infini (grille temporelle Miro-like) | V3 |
+| Sync mobile Bluetooth/WiFi Direct | V4 |
+| Cantine/etude | Jamais |
+| Cahier navette | Jamais |
+| Embeddings / recherche semantique | V3 si besoin |
+| Multi-user / multi-poste | V4 (sync) |
 
 ---
 
-## 8. Out of Scope
-
-| Fonctionnalite | Raison du report | Version cible |
-|----------------|------------------|---------------|
-| Export PDF tableau 2 colonnes (Comportement / Travail) | L'export JSON + LSU XML suffisent | V2.2 |
-| Upgrade Qwen3 4B | Attendre stabilisation GGUF + chat template | V2.2 |
-| Barre laterale (sidebar window separee) | Nice-to-have, pas essentiel | V2.2 |
-| Themes visuels TBI | Cosmetique, pas prioritaire | V2.2 |
-| Statistiques avancees (graphiques tendances) | Nice-to-have | V2.2 |
-| Notation chiffree ou lettres | Pas dans le LSU, pas de besoin identifie | Non prevu |
-| Import automatique ONDE depuis Base Eleves | API non publique, risque compliance | Non prevu |
-| Gestion des metiers de classe | Module separe, hors perimetre | V3 |
-| Connexion mobile/tablette | Contrainte reseau ecole, complexite | V3 |
-| Multi-classe / multi-enseignant | Un seul utilisateur pour l'instant | V3 |
-| Synchronisation cloud | Contradictoire avec le principe 100% local | Non prevu |
-
----
-
-## 9. Recapitulatif des Functional Requirements
+## 8. Recapitulatif des Requirements
 
 ### Par module
 
 | Module | FRs | Count |
 |--------|-----|-------|
-| Module 1 — Comportement Classe | FR1-FR30 | 30 |
-| Module 2 — Comportement Individuel | FR31-FR37 | 7 |
-| Module 3 — Domaines d'Apprentissage (refonde) | FR38-FR44, FR60-FR62 | 10 |
-| Infrastructure IA | FR45-FR50 | 6 |
+| Module 1 — Comportement Classe (enrichi) | FR1-FR30, FR70-FR72 | 33 |
+| Module 2 — Registre d'Appel | FR73-FR79 | 7 |
+| Module 3 — Evaluations | FR80-FR84 | 5 |
+| Module 4 — LSU Vivant | FR85-FR93 | 9 |
+| Infrastructure IA | FR38, FR45-FR47, FR49-FR50 | 6 |
 | Gestion des Modeles | FR51-FR53 | 3 |
-| Configuration + Annee scolaire | FR54-FR56, FR58-FR59, FR65 | 6 |
+| Configuration + Annee scolaire | FR54-FR56, FR58-FR59, FR65, FR94 | 7 |
 | Capture Audio | FR57 | 1 |
-| Export LSU | FR63-FR64 | 2 |
-| **TOTAL** | | **65** |
+| **TOTAL** | | **71** |
 
 ### Par priorite
 
 | Priorite | Count | Pourcentage |
 |----------|-------|-------------|
-| Must | 58 | 89% |
-| Should | 5 | 8% |
-| Could | 2 | 3% |
-| **TOTAL** | **65** | **100%** |
+| Must | 60 | 85% |
+| Should | 11 | 15% |
+| **TOTAL** | **71** | **100%** |
 
-### Recapitulatif des Non-Functional Requirements
+### NFRs
 
-| Categorie | NFRs | Count |
-|-----------|------|-------|
-| Performance | NFR1-NFR8 | 8 |
-| Securite et RGPD | NFR9-NFR12 | 4 |
-| Compatibilite et Deploiement | NFR13-NFR17 | 5 |
-| Fiabilite | NFR18-NFR22 | 5 |
-| Accessibilite TBI | NFR23-NFR27 | 5 |
-| Migrations et Donnees | NFR28-NFR30 | 3 |
-| **TOTAL** | | **30** |
-
----
-
-## 10. Decisions Architecturales Cles (Reference)
-
-| Decision | Choix | Justification |
-|----------|-------|---------------|
-| Framework Desktop | Tauri v2 (conserver V1) | Mature, sidecar natif, leger |
-| Frontend | React 18 + TypeScript (conserver V1) | Pas de raison de changer |
-| State Management | Zustand (conserver V1) | Pattern simple, efficace |
-| Base de donnees | SQLite via tauri-plugin-sql (conserver V1) | Offline-first, fichier unique |
-| STT | Whisper.cpp small FR (GGUF Q4) | Meilleur rapport qualite/taille pour francais |
-| VAD | whisper.cpp natif (`--vad` flag) | Integre, pas de dependance ONNX separee |
-| LLM | Qwen 2.5 Coder 1.5B (GGUF Q4) | Specialise JSON/code, benchmark 0.5B prevu |
-| Serveur LLM | llama-server (llama.cpp) | API OpenAI-compatible, GBNF natif |
-| **Role LLM (V2.1)** | **Classificateur + fusionneur** | **Le LLM identifie le domaine et fusionne le texte dicte avec l'existant. Ne genere jamais de contenu nouveau. Ne touche jamais au niveau d'evaluation.** |
-| **GBNF (V2.1)** | **Dynamique depuis BDD** | **Grammaire generee cote Rust a partir des domaines actifs de l'eleve. Pas de GBNF statique.** |
-| **Niveau evaluation (V2.1)** | **100% decision du professeur** | **Le LLM ne suggere ni ne modifie jamais le niveau. Document officiel LSU, responsabilite de l'enseignant.** |
-| **Echelle evaluation (V2.1)** | **4 niveaux LSU** | **Non atteints, Partiellement atteints, Atteints, Depasses. Migration 3→4 niveaux depuis V2.** |
-| Sortie LLM | JSON structure (pas SQL) | Securite : Rust reconstruit avec prepared statements |
-| Audio capture | tauri-plugin-mic-recorder (Plan A) / Web Audio API (Plan B) | Simplicite, fallback si plugin instable |
-| Pipeline | Sequentiel a la demande | Mode obligatoire sur PC 4 Go RAM |
-| Watchdog | Restart auto whisper-server | Bug handle leak Windows |
+| Categorie | Count |
+|-----------|-------|
+| Performance | 10 |
+| Securite et RGPD | 4 |
+| Compatibilite et Deploiement | 5 |
+| Fiabilite | 5 |
+| Accessibilite TBI | 5 |
+| Migrations et Donnees | 5 |
+| **TOTAL** | **34** |
 
 ---
 
-## 11. Glossaire
+## 9. Decisions Architecturales (Reference)
+
+### ADRs conservees V2
+
+- ADR-001 : JSON pas SQL (LLM output)
+- ADR-002 : Pipeline sequentiel (4 Go RAM)
+- ADR-003 : VAD natif whisper.cpp
+- ADR-004 : Watchdog whisper-server
+- ADR-005 : tauri-plugin-mic-recorder + Web Audio fallback
+- ADR-006 : Qwen 2.5 Coder 1.5B
+
+### ADRs conservees V2.1
+
+- ADR-007 : GBNF dynamique
+- ADR-008 : Budget tokens adaptatif
+- ADR-010 : Undo atomique
+- ADR-011 : Annee scolaire flag+guard
+- ADR-012 : Export LSU XML quick-xml
+- ADR-013 : Migrations backup+savepoints
+
+### ADRs nouvelles/modifiees V2.1-rev2
+
+| ADR | Decision | Justification |
+|-----|----------|---------------|
+| **ADR-009-rev** | Review panel → TranscriptPreview (inline, par carte eleve) | Plus naturel : le micro est sur la carte, la preview aussi |
+| **ADR-014** | Event sourcing leger | Table `evenements_pedagogiques` immutable, append-only. Les syntheses et appreciations generales sont des vues materialisees versionnees. |
+| **ADR-015** | 3 jobs LLM | Classification (GBNF dynamique, < 5s), Synthese (prompt adaptatif, < 10s), Appreciation generale (cross-domaines, < 15s). Un seul job a la fois. |
+| **ADR-016** | Micro dual-mode par eleve | onPointerDown/onPointerUp avec seuil ~300ms. Tap court = toggle, press long = push-to-talk. |
+| **ADR-017** | Double vue LSU | Par eleve (tous domaines) ET par domaine (tous eleves). Miroir de l'interface Pleiade. |
+| **ADR-018** | Suppression Module 2 | Suivi individuel remplace par vues filtrees dans Evaluations et LSU Vivant. Table `comportement_detail` conservee read-only. |
+| **ADR-019** | Registre d'appel | Nouvelle table `absences_v2` avec demi-journees, 3 types, motifs, retards. Alerte glissante 30 jours. |
+| **ADR-020** | Import CSV eleves | Parsing CSV simple (prenom, niveau), rapport d'import. Pas de mapping complexe. |
+
+---
+
+## 10. Glossaire
+
+Glossaire V2.1 initiale conserve + ajouts :
 
 | Terme | Definition |
 |-------|------------|
-| **TBI** | Tableau Blanc Interactif — ecran connecte au PC de la classe |
-| **Sidecar** | Binaire externe embarque dans le bundle Tauri, lance comme processus enfant |
-| **GGUF** | Format de fichier pour les modeles IA quantifies (llama.cpp ecosystem) |
-| **GBNF** | GGML BNF — format de grammaire pour contraindre la sortie de llama.cpp au niveau token |
-| **Whisper.cpp** | Port C/C++ du modele Whisper d'OpenAI, optimise CPU, MIT license |
-| **Qwen 2.5 Coder** | Modele LLM specialise code/donnees structurees par Alibaba |
-| **Push-to-talk** | Mode d'enregistrement audio : maintenir un bouton pour parler, relacher pour terminer |
-| **Pipeline sequentiel** | Un seul moteur IA actif a la fois (Whisper OU Qwen, pas les deux simultanement) |
-| **Prepared Statement** | Requete SQL pre-compilee avec parametres, protection contre l'injection SQL |
-| **VAD** | Voice Activity Detection — detection des segments de parole dans un flux audio |
-| **STT** | Speech-to-Text — conversion de la parole en texte |
-| **LLM** | Large Language Model — modele de langage generatif |
-| **RGPD** | Reglement General sur la Protection des Donnees (EU) |
-| **Mode portable** | Application executable sans installateur, pas de modification du systeme |
-| **Periode scolaire** | Trimestre ou semestre, configurable par l'enseignant |
-| **LSU** | Livret Scolaire Unique — document officiel de suivi des acquis scolaires (Education nationale) |
-| **ONDE** | Outil Numerique pour la Direction d'Ecole — systeme de gestion administrative |
-| **UAI** | Unite Administrative Immatriculee — code identifiant unique de l'etablissement scolaire |
-| **INC** | Code de l'inspection de circonscription |
-| **INE** | Identifiant National Eleve — numero unique attribue a chaque eleve |
-| **Pleiade** | Portail de l'Education nationale pour le telechargement/import des LSU |
-| **Cycle** | Regroupement de niveaux scolaires : C1 (PS-GS), C2 (CP-CE2), C3 (CM1-CM2) |
-| **Appreciation generale** | Commentaire synthetique sur la scolarite globale d'un eleve pour une periode |
-| **Classificateur** | Role du LLM : identifier a quel domaine d'apprentissage correspond la dictee |
-| **Fusionneur** | Role du LLM : combiner le texte nouvellement dicte avec les observations existantes |
+| **Event sourcing** | Pattern architectural ou chaque changement est capture comme un evenement immutable |
+| **Synthese LSU** | Texte genere par le LLM resumant les observations/evaluations d'un domaine pour une periode |
+| **Dual-mode micro** | Bouton micro avec 2 modes : tap court (toggle) et press long (push-to-talk) |
+| **Double vue LSU** | Visualisation du LSU par eleve (tous domaines) ou par domaine (tous eleves) |
+| **Registre d'appel** | Document officiel de suivi des presences/absences par demi-journee |
+| **Demi-journee** | Matin ou apres-midi, unite de comptage des absences |
+| **Alerte legale** | Obligation de signalement si 4+ demi-journees injustifiees par mois |
 
 ---
 
-**Document genere le :** 2026-02-17
-**Prochain livrable :** Architecture V2.1 (`architecture-v2.1.md`)
+**Document genere le :** 2026-02-24
+**Revision majeure post-brainstorming**
+**Prochain livrable :** Revision Architecture V2.1 + Revision Epics & Stories
