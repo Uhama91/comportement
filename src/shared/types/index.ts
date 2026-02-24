@@ -172,6 +172,48 @@ export interface InsertResult {
   count: number;
 }
 
+// Event Sourcing — Journal Pedagogique (V2.1-rev2, ADR-014)
+export type EventType = 'observation' | 'evaluation' | 'motif_sanction';
+export type EventSource = 'vocal' | 'manual';
+
+export interface PedagogicalEvent {
+  id: number;
+  uuid: string;
+  eleveId: number;
+  anneeScolaireId: number;
+  periodeId: number | null;
+  type: EventType;
+  domaineId: number | null;
+  lecon: string | null;
+  niveauLsu: NiveauLsu | null;
+  observations: string | null;
+  texteDictation: string | null;
+  source: EventSource;
+  createdAt: string;
+  syncedAt: string | null;
+}
+
+export interface NewEvent {
+  eleveId: number;
+  anneeScolaireId: number;
+  periodeId: number | null;
+  type: EventType;
+  domaineId: number | null;
+  lecon: string | null;
+  niveauLsu: NiveauLsu | null;
+  observations: string | null;
+  texteDictation: string | null;
+  source: EventSource;
+}
+
+export interface EventFilter {
+  eleveId?: number;
+  anneeScolaireId?: number;
+  periodeId?: number;
+  domaineId?: number;
+  eventType?: EventType;
+}
+
 // Model Management (Epic 16)
 export interface ModelInfo {
   name: string;

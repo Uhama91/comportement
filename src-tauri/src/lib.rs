@@ -9,6 +9,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod annee;
 mod audio;
+mod events;
 mod migrations;
 mod models;
 mod sidecar;
@@ -227,6 +228,8 @@ pub fn run() {
             models::downloader::download_models,
             models::downloader::cancel_download,
             models::installer::install_models_from_folder,
+            events::add_event,
+            events::load_events,
         ])
         .setup(|app| {
             // Logging in debug mode

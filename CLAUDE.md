@@ -204,3 +204,4 @@ Planning (PRD, Architecture, Epics) + Implementation (Epics 1-8) en 3 jours. Tag
 | 2026-02-24 | Brainstorming V2.1 refonte (Party Mode + 3 techniques) : 5 modules, 44 questions, modele event sourcing, flux donnees | `brainstorming-session-2026-02-24.md` |
 | 2026-02-24 | PRD V2.1-rev2 : 71 FRs, 4 modules, event sourcing, 3 jobs LLM, micro par eleve, registre appel, LSU vivant | `prd-v2.1.md` |
 | 2026-02-24 | Architecture + Epics V2.1-rev2 : 20 ADRs, 5 epics (22-26), 19 stories, 4 sprints | `architecture-v2.1.md`, `epics-v2.1.md` |
+| 2026-02-24 | Epic 22 Stories 22.1-22.2 : migrations rev2 (M009-M012) + event store Rust/TS (journal pedagogique immutable) | `v2_1_rev2.rs`, `events/mod.rs`, `eventStore.ts` |
