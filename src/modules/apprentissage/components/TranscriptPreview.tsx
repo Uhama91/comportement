@@ -5,7 +5,9 @@
 import { useState, useCallback } from 'react';
 import { useDictationStore } from '../../../shared/stores/dictationStore';
 import { useAppreciationStore } from '../../../shared/stores/appreciationStore';
-import type { ClassificationResultItem } from '../../../shared/types';
+import { useEventStore } from '../../../shared/stores/eventStore';
+import { useAnneeStore } from '../../../shared/stores/anneeStore';
+import type { ClassificationResultItem, NewEvent } from '../../../shared/types';
 
 interface ManualItem {
   domaineId: number;
@@ -17,6 +19,8 @@ export function TranscriptPreview() {
     useDictationStore();
   const { domaines, appreciations, addAppreciation, updateAppreciation, loadAppreciations } =
     useAppreciationStore();
+  const { addEvent } = useEventStore();
+  const activeAnnee = useAnneeStore((s) => s.activeAnnee);
   const [saving, setSaving] = useState(false);
   // Local editable observations: index → edited text
   const [editedTexts, setEditedTexts] = useState<Record<number, string>>({});
@@ -107,7 +111,7 @@ export function TranscriptPreview() {
 
     setSaving(true);
     try {
-      // Save LLM items
+      // Save LLM items to appreciations (retrocompat) + event store (V2.1-rev2)
       for (let i = 0; i < classificationResults.items.length; i++) {
         if (removedItems.has(i)) continue;
         const item = classificationResults.items[i];
@@ -115,6 +119,25 @@ export function TranscriptPreview() {
         if (!finalText) continue;
 
         const finalDomaineId = getDomaineId(item, i);
+
+        // Event sourcing: insert into evenements_pedagogiques (Story 22.4)
+        if (activeAnnee) {
+          const event: NewEvent = {
+            eleveId,
+            anneeScolaireId: activeAnnee.id,
+            periodeId,
+            type: 'observation',
+            domaineId: finalDomaineId,
+            lecon: null,
+            niveauLsu: null,
+            observations: finalText,
+            texteDictation: transcribedText,
+            source: 'vocal',
+          };
+          await addEvent(event);
+        }
+
+        // Retrocompat: save to appreciations table
         const existing = appreciations.find(
           (a) => a.domaineId === finalDomaineId
         );
@@ -137,6 +160,25 @@ export function TranscriptPreview() {
       for (const manual of activeManualItems) {
         const finalText = manual.text.trim();
         if (!finalText) continue;
+
+        // Event sourcing (Story 22.4)
+        if (activeAnnee) {
+          const event: NewEvent = {
+            eleveId,
+            anneeScolaireId: activeAnnee.id,
+            periodeId,
+            type: 'observation',
+            domaineId: manual.domaineId,
+            lecon: null,
+            niveauLsu: null,
+            observations: finalText,
+            texteDictation: transcribedText,
+            source: 'manual',
+          };
+          await addEvent(event);
+        }
+
+        // Retrocompat: save to appreciations table
         const existing = appreciations.find(
           (a) => a.domaineId === manual.domaineId
         );
