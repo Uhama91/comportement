@@ -5,6 +5,8 @@ import { SanctionReasonModal } from '../../../../shared/components/SanctionReaso
 import { WeeklyRewardLine } from './WeeklyRewardLine';
 import { useWindowSize } from '../../../../shared/hooks/useWindowSize';
 import { useTBIMode } from '../../../../shared/hooks/useFullscreen';
+import { useDualModeMic } from '../../../../shared/hooks/useDualModeMic';
+import { useConfigStore } from '../../../../shared/stores/configStore';
 
 interface StudentGridCardProps {
   student: StudentWithSanctions;
@@ -19,6 +21,14 @@ export function StudentGridCard({ student, compact = true, onNavigateToStudent }
   const [showMenu, setShowMenu] = useState(false);
   const { width } = useWindowSize();
   const isTBI = useTBIMode();
+  const activePeriode = useConfigStore((s) => s.activePeriode);
+
+  // Dual-mode mic: tap=toggle, press=push-to-talk (Story 22.3, ADR-016)
+  const { onPointerDown: micDown, onPointerUp: micUp, isRecording, isProcessing } = useDualModeMic({
+    eleveId: student.id,
+    periodeId: activePeriode?.id ?? null,
+    disabled: student.todayAbsent,
+  });
 
   // Taille adaptative selon la largeur de fenêtre
   const isVerySmall = !isTBI && width < 500;
@@ -252,6 +262,26 @@ export function StudentGridCard({ student, compact = true, onNavigateToStudent }
               title="Sanction"
             >
               🙁
+            </button>
+            {/* Micro dual-mode (Story 22.3) */}
+            <button
+              onPointerDown={micDown}
+              onPointerUp={micUp}
+              disabled={student.todayAbsent || !activePeriode}
+              className={`
+                flex-1 rounded font-medium transition-colors select-none
+                disabled:opacity-50 disabled:cursor-not-allowed
+                ${isRecording
+                  ? 'bg-red-500 text-white animate-pulse'
+                  : isProcessing
+                    ? 'bg-blue-200 text-blue-700'
+                    : 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                }
+                ${isTBI ? 'py-3 text-xl min-h-[48px]' : isVerySmall ? 'py-0.5 text-[9px]' : isSmall ? 'py-1 text-[10px]' : 'py-1.5 text-xs'}
+              `}
+              title={isRecording ? 'Tap: arreter | Maintenir: push-to-talk' : 'Dicter une observation'}
+            >
+              {isProcessing ? '...' : '🎤'}
             </button>
           </div>
         </div>
