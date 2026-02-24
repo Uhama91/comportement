@@ -23,6 +23,7 @@ export interface Appreciation {
   niveau: NiveauAcquisition | null;
   niveauLsu: NiveauLsu | null;
   observations: string | null;
+  previousObservations: string | null;
   texteDictation: string | null;
   createdAt: string;
 }
@@ -50,6 +51,8 @@ interface AppreciationStore {
     niveauLsu?: NiveauLsu | null;
     observations?: string;
   }) => Promise<void>;
+
+  undoAppreciation: (id: number) => Promise<void>;
 
   // Batch save from LLM pipeline
   batchSaveAppreciations: (items: Array<{
@@ -179,6 +182,7 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
           a.niveau,
           a.niveau_lsu as niveauLsu,
           a.observations,
+          a.previous_observations as previousObservations,
           a.texte_dictation as texteDictation,
           a.created_at as createdAt
         FROM appreciations a
@@ -234,6 +238,8 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
         params.push(data.niveauLsu ?? null);
       }
       if ('observations' in data) {
+        // Sauvegarder l'ancienne valeur atomiquement avant d'écraser
+        setClauses.push(`previous_observations = observations`);
         setClauses.push(`observations = $${paramIdx++}`);
         params.push(data.observations ?? null);
       }
@@ -248,6 +254,22 @@ export const useAppreciationStore = create<AppreciationStore>((set, get) => ({
       await get().loadAppreciations(appreciation.eleveId, appreciation.periodeId);
     } catch (error) {
       console.error('Error updating appreciation:', error);
+      set({ error: String(error) });
+    }
+  },
+
+  undoAppreciation: async (id) => {
+    try {
+      const db = await getDb();
+      const appreciation = get().appreciations.find(a => a.id === id);
+      if (!appreciation) return;
+      await db.execute(
+        `UPDATE appreciations SET observations = previous_observations, previous_observations = NULL WHERE id = $1 AND previous_observations IS NOT NULL`,
+        [id]
+      );
+      await get().loadAppreciations(appreciation.eleveId, appreciation.periodeId);
+    } catch (error) {
+      console.error('Error undoing appreciation:', error);
       set({ error: String(error) });
     }
   },

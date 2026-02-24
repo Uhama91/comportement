@@ -12,7 +12,7 @@ const NIVEAU_COLORS: Record<string, string> = Object.fromEntries(
 );
 
 export function AppreciationTable({ eleveId, periodeId }: AppreciationTableProps) {
-  const { domaines, appreciations, isLoading, loadAppreciations, addAppreciation, updateAppreciation } = useAppreciationStore();
+  const { domaines, appreciations, isLoading, loadAppreciations, addAppreciation, updateAppreciation, undoAppreciation } = useAppreciationStore();
 
   // Les domaines sont charges par le parent (apprentissage/index.tsx) avec le cycle de l'eleve
 
@@ -57,6 +57,7 @@ export function AppreciationTable({ eleveId, periodeId }: AppreciationTableProps
               periodeId={periodeId}
               onAddAppreciation={addAppreciation}
               onUpdateAppreciation={updateAppreciation}
+              onUndoAppreciation={undoAppreciation}
             />
           ))}
         </tbody>
@@ -78,6 +79,7 @@ function DomainRow({
   periodeId,
   onAddAppreciation,
   onUpdateAppreciation,
+  onUndoAppreciation,
 }: {
   domaine: Domaine;
   appreciation: Appreciation | null;
@@ -92,6 +94,7 @@ function DomainRow({
     texteDictation?: string;
   }) => Promise<boolean>;
   onUpdateAppreciation: (id: number, data: { niveauLsu?: NiveauLsu | null; observations?: string }) => Promise<void>;
+  onUndoAppreciation: (id: number) => Promise<void>;
 }) {
   const [editingObs, setEditingObs] = useState(false);
   const [obsText, setObsText] = useState(appreciation?.observations || '');
@@ -154,12 +157,23 @@ function DomainRow({
             <button onClick={handleObsSave} className="px-2 py-1 text-xs bg-blue-600 text-white rounded self-start">OK</button>
           </div>
         ) : (
-          <span
-            onClick={() => setEditingObs(true)}
-            className="text-xs text-slate-600 cursor-pointer hover:text-blue-600"
-          >
-            {appreciation?.observations || <span className="text-slate-300 italic">Cliquer pour ajouter</span>}
-          </span>
+          <div className="flex items-center gap-2">
+            <span
+              onClick={() => setEditingObs(true)}
+              className="text-xs text-slate-600 cursor-pointer hover:text-blue-600 flex-1"
+            >
+              {appreciation?.observations || <span className="text-slate-300 italic">Cliquer pour ajouter</span>}
+            </span>
+            {appreciation?.previousObservations != null && (
+              <button
+                onClick={() => onUndoAppreciation(appreciation.id)}
+                title={`Annuler : revenir à "${appreciation.previousObservations}"`}
+                className="text-xs text-slate-400 hover:text-amber-600 transition-colors shrink-0"
+              >
+                ↩
+              </button>
+            )}
+          </div>
         )}
       </td>
     </tr>

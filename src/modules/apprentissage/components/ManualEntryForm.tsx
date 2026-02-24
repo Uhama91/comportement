@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAppreciationStore } from '../../../shared/stores/appreciationStore';
 import { useStudentStore } from '../../../shared/stores/studentStore';
 import { useConfigStore } from '../../../shared/stores/configStore';
 import { NIVEAUX_LSU, type NiveauLsu } from '../../../shared/types';
+import { NIVEAU_TO_CYCLE, type NiveauCode, type CycleNumber } from '../../../shared/types/domaines-officiels';
 
 interface ManualEntryFormProps {
   defaultEleveId?: number;
@@ -14,7 +15,7 @@ interface ManualEntryFormProps {
 export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onSaved }: ManualEntryFormProps) {
   const { students } = useStudentStore();
   const { periodes } = useConfigStore();
-  const { domaines, addAppreciation } = useAppreciationStore();
+  const { domaines, appreciations, loadDomaines, loadAppreciations, addAppreciation, updateAppreciation } = useAppreciationStore();
 
   const activeDomaines = domaines.filter(d => d.actif);
 
@@ -25,6 +26,37 @@ export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onS
   const [observations, setObservations] = useState('');
   const [saving, setSaving] = useState(false);
   const [domaineError, setDomaineError] = useState(false);
+
+  // Charger les domaines filtrés par cycle de l'élève sélectionné
+  useEffect(() => {
+    const student = students.find(s => s.id === eleveId);
+    const cycle = student?.niveau
+      ? (NIVEAU_TO_CYCLE[student.niveau as NiveauCode] as CycleNumber)
+      : null;
+    loadDomaines(cycle);
+    if (eleveId && periodeId) {
+      loadAppreciations(eleveId, periodeId);
+    }
+  }, [eleveId, periodeId]);
+
+  // Réinitialiser domaineId si la liste change et que l'id n'est plus valide
+  useEffect(() => {
+    if (activeDomaines.length > 0 && !activeDomaines.find(d => d.id === domaineId)) {
+      setDomaineId(activeDomaines[0].id);
+    }
+  }, [domaines]);
+
+  // Pré-remplir depuis l'appréciation existante quand le domaine ou les appréciations changent
+  useEffect(() => {
+    const existing = appreciations.find(a => a.domaineId === domaineId);
+    if (existing) {
+      setNiveau(existing.niveauLsu || '');
+      setObservations(existing.observations || '');
+    } else {
+      setNiveau('');
+      setObservations('');
+    }
+  }, [domaineId, appreciations]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,21 +70,35 @@ export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onS
 
     setSaving(true);
     try {
-      const success = await addAppreciation({
-        eleveId,
-        periodeId,
-        domaineId,
-        niveauLsu: (niveau || null) as NiveauLsu | null,
-        observations: observations.trim() || undefined,
-      });
-      if (success) {
+      const existing = appreciations.find(a => a.domaineId === domaineId);
+
+      if (existing) {
+        // Mise à jour — previous_observations sera sauvé automatiquement
+        await updateAppreciation(existing.id, {
+          niveauLsu: (niveau || null) as NiveauLsu | null,
+          observations: observations.trim() || undefined,
+        });
         onSaved();
         onClose();
+      } else {
+        const success = await addAppreciation({
+          eleveId,
+          periodeId,
+          domaineId,
+          niveauLsu: (niveau || null) as NiveauLsu | null,
+          observations: observations.trim() || undefined,
+        });
+        if (success) {
+          onSaved();
+          onClose();
+        }
       }
     } finally {
       setSaving(false);
     }
   };
+
+  const existingForDomaine = appreciations.find(a => a.domaineId === domaineId);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[100]" onClick={onClose}>
@@ -112,6 +158,11 @@ export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onS
               ))}
             </select>
             {domaineError && <p className="text-xs text-red-500 mt-1">Domaine obligatoire</p>}
+            {existingForDomaine && (
+              <p className="text-xs text-amber-600 mt-1">
+                Mise a jour — une observation existe deja pour ce domaine.
+              </p>
+            )}
           </div>
 
           {/* Niveau */}
@@ -154,7 +205,7 @@ export function ManualEntryForm({ defaultEleveId, defaultPeriodeId, onClose, onS
               disabled={saving || periodes.length === 0}
               className="flex-1 px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors text-sm"
             >
-              {saving ? 'Enregistrement...' : 'Enregistrer'}
+              {saving ? 'Enregistrement...' : existingForDomaine ? 'Mettre a jour' : 'Enregistrer'}
             </button>
           </div>
         </form>
