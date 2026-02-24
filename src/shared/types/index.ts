@@ -214,6 +214,43 @@ export interface EventFilter {
   eventType?: EventType;
 }
 
+// Registre d'Appel — Absences V2 (ADR-019)
+export type DemiJournee = 'matin' | 'apres_midi';
+export type TypeAbsence = 'justifiee' | 'medicale' | 'injustifiee';
+
+export interface AbsenceV2 {
+  id: number;
+  eleveId: number;
+  date: string;          // YYYY-MM-DD
+  demiJournee: DemiJournee;
+  typeAbsence: TypeAbsence;
+  motif: string | null;
+  retard: boolean;
+  anneeScolaireId: number;
+  createdAt: string;
+}
+
+export interface NewAbsenceV2 {
+  eleveId: number;
+  date: string;
+  demiJournee: DemiJournee;
+  typeAbsence?: TypeAbsence;
+  motif?: string;
+  retard?: boolean;
+  anneeScolaireId: number;
+}
+
+export interface AbsenceAlert {
+  eleveId: number;
+  count: number;
+}
+
+export interface AbsenceTotaux {
+  eleveId: number;
+  justifiees: number;
+  injustifiees: number;
+}
+
 // Model Management (Epic 16)
 export interface ModelInfo {
   name: string;

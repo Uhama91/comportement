@@ -64,6 +64,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
   - 22.2 Event Store Rust/TS (journal pedagogique immutable, 10 tests)
   - 22.3 Micro dual-mode par eleve (useDualModeMic, tap/press 300ms)
   - 22.4 Classification + validation → event sourcing (TranscriptPreview)
+- [x] **Sprint 6 : Epic 23 + Epic 24** (6/6 stories — COMPLET)
+  - 23.1 Appel matin/apres-midi (absences/mod.rs, 14 tests Rust, absenceStore, AttendanceGrid)
+  - 23.2 Motifs, retards & retroactivite (AbsenceDetailModal, type/motif/retard editing)
+  - 23.3 Alerte legale & totaux LSU (30-day rolling alert, AbsenceSummary par periode)
+  - 24.1 Saisie evaluation individuelle (EvaluationForm, 4 niveaux LSU, reuse eventStore)
+  - 24.2 Saisie par lot (BatchEvaluation, grille eleves x niveaux)
+  - 24.3 Historique evaluations (EvaluationHistory, timeline + filtres domaine/periode)
 
 ### V2 — Phase 4 Implementation (COMPLETE)
 
@@ -210,3 +217,5 @@ Planning (PRD, Architecture, Epics) + Implementation (Epics 1-8) en 3 jours. Tag
 | 2026-02-24 | PRD V2.1-rev2 : 71 FRs, 4 modules, event sourcing, 3 jobs LLM, micro par eleve, registre appel, LSU vivant | `prd-v2.1.md` |
 | 2026-02-24 | Architecture + Epics V2.1-rev2 : 20 ADRs, 5 epics (22-26), 19 stories, 4 sprints | `architecture-v2.1.md`, `epics-v2.1.md` |
 | 2026-02-24 | Epic 22 COMPLET (4/4) : migrations rev2, event store, micro dual-mode, classification→event sourcing | `v2_1_rev2.rs`, `events/mod.rs`, `eventStore.ts`, `useDualModeMic.ts`, `TranscriptPreview.tsx` |
+| 2026-02-24 | Epic 23 COMPLET (3/3) : registre appel, motifs/retards/retroactivite, alertes legales+totaux LSU (14 tests Rust) | `absences/mod.rs`, `absenceStore.ts`, `AttendanceGrid.tsx`, `AbsenceDetailModal.tsx`, `AbsenceSummary.tsx` |
+| 2026-02-24 | Epic 24 COMPLET (3/3) : evaluations individuelles, saisie par lot, historique chronologique (reuse eventStore) | `EvaluationForm.tsx`, `BatchEvaluation.tsx`, `EvaluationHistory.tsx`, `evaluations/index.tsx` |

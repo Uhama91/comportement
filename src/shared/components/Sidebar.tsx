@@ -1,6 +1,6 @@
 import { useWindowSize } from '../hooks/useWindowSize';
 
-type ModuleId = 'classe' | 'individuel' | 'apprentissage';
+type ModuleId = 'classe' | 'individuel' | 'apprentissage' | 'registre' | 'evaluations';
 
 interface SidebarProps {
   activeModule: ModuleId;
@@ -30,8 +30,10 @@ export function Sidebar({
 
   const modules: Array<{ id: ModuleId; icon: string; label: string }> = [
     { id: 'classe', icon: '👥', label: 'Classe' },
-    { id: 'individuel', icon: '👤', label: 'Individuel' },
+    { id: 'registre', icon: '📋', label: 'Appel' },
+    { id: 'evaluations', icon: '📝', label: 'Evaluations' },
     { id: 'apprentissage', icon: '📚', label: 'Apprentissages' },
+    { id: 'individuel', icon: '👤', label: 'Individuel' },
   ];
 
   return (

@@ -7,6 +7,7 @@ use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut};
 use tauri_plugin_single_instance::init as single_instance_init;
 use tauri_plugin_sql::{Migration, MigrationKind};
 
+mod absences;
 mod annee;
 mod audio;
 mod events;
@@ -230,6 +231,13 @@ pub fn run() {
             models::installer::install_models_from_folder,
             events::add_event,
             events::load_events,
+            absences::toggle_absence_v2,
+            absences::update_absence_type,
+            absences::update_absence_motif,
+            absences::toggle_retard,
+            absences::load_absences_v2,
+            absences::compute_absence_alerts,
+            absences::compute_absence_totaux,
         ])
         .setup(|app| {
             // Logging in debug mode

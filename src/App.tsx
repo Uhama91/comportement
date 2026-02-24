@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import ComportementClasseModule from './modules/comportement-classe';
 import ComportementIndividuelModule from './modules/comportement-individuel';
 import ApprentissageModule from './modules/apprentissage';
+import RegistreAppelModule from './modules/registre-appel';
+import EvaluationsModule from './modules/evaluations';
 import { Sidebar } from './shared/components/Sidebar';
 import { Settings } from './shared/components/Settings';
 import { ExportButton } from './shared/components/ExportButton';
@@ -14,7 +16,7 @@ import { useAppreciationStore } from './shared/stores/appreciationStore';
 import { useModelStore } from './shared/stores/modelStore';
 import { shouldTriggerRewards, markRewardTriggerDone } from './shared/utils/date';
 
-type ModuleId = 'classe' | 'individuel' | 'apprentissage';
+type ModuleId = 'classe' | 'individuel' | 'apprentissage' | 'registre' | 'evaluations';
 
 function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>('classe');
@@ -80,6 +82,10 @@ function App() {
         return <ComportementIndividuelModule selectedStudentId={selectedStudentId} />;
       case 'apprentissage':
         return <ApprentissageModule />;
+      case 'registre':
+        return <RegistreAppelModule />;
+      case 'evaluations':
+        return <EvaluationsModule />;
       default:
         return <ComportementClasseModule onNavigateToStudent={navigateToStudent} />;
     }
@@ -102,8 +108,10 @@ function App() {
             MonCahier
             {activeModule === 'individuel' && ' — Suivi Individuel'}
             {activeModule === 'apprentissage' && ' — Domaines d\'Apprentissage'}
+            {activeModule === 'registre' && ' — Registre d\'Appel'}
+            {activeModule === 'evaluations' && ' — Evaluations'}
           </h1>
-          {(activeModule === 'individuel' || activeModule === 'apprentissage') && (
+          {(activeModule === 'individuel' || activeModule === 'apprentissage' || activeModule === 'evaluations') && (
             <PeriodSelector />
           )}
         </header>
