@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use tauri::{AppHandle, Emitter, Manager};
 
 /// Version user_version qui marque l'application complète des migrations V2.1
-const V2_1_USER_VERSION: i32 = 10;
+const V2_1_USER_VERSION: i32 = 11;
 
 /// Retourne le chemin du fichier SQLite selon la plateforme.
 /// macOS  : ~/Library/Application Support/fr.comportement.app/comportement.db
@@ -63,13 +63,87 @@ pub fn backup_database(db_path: &PathBuf) -> Result<PathBuf, String> {
     Ok(backup_path)
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// M013 — Supprimer la contrainte UNIQUE(eleve_id, periode_id) de
+//         appreciations_generales pour permettre le versioning multi-lignes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Applique M013 si la contrainte UNIQUE(eleve_id, periode_id) est encore présente.
+/// Idempotent : si la contrainte est absente (déjà migrée), skip.
+pub async fn apply_m013_if_needed(
+    conn: &mut sqlx::sqlite::SqliteConnection,
+) -> Result<(), String> {
+    // Lire le schema de la table pour détecter la contrainte UNIQUE
+    let schema_sql: Option<String> = sqlx::query_scalar(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='appreciations_generales'",
+    )
+    .fetch_optional(&mut *conn)
+    .await
+    .map_err(|e| format!("M013: erreur lecture schema: {}", e))?;
+
+    // Si la table n'existe pas encore → skip (sera créée par M007)
+    // Si UNIQUE absent du schema → déjà migrée → skip
+    let needs_migration = schema_sql
+        .as_deref()
+        .map(|s| s.to_uppercase().contains("UNIQUE"))
+        .unwrap_or(false);
+
+    if needs_migration {
+        // Pattern rename-copy-drop-rename (SQLite ne supporte pas DROP CONSTRAINT)
+        let stmts = [
+            "CREATE TABLE appreciations_generales_new (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                eleve_id INTEGER NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+                periode_id INTEGER NOT NULL REFERENCES config_periodes(id),
+                annee_scolaire_id INTEGER REFERENCES annees_scolaires(id),
+                texte TEXT NOT NULL CHECK(length(texte) <= 1500),
+                version INTEGER NOT NULL DEFAULT 1,
+                generated_by TEXT DEFAULT 'manual' CHECK(generated_by IN ('llm', 'manual')),
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            "INSERT OR IGNORE INTO appreciations_generales_new
+                (id, eleve_id, periode_id, annee_scolaire_id, texte, version, generated_by, created_at)
+             SELECT id, eleve_id, periode_id, annee_scolaire_id, texte,
+                    COALESCE(version,1), COALESCE(generated_by,'manual'), created_at
+             FROM appreciations_generales",
+            "DROP TABLE appreciations_generales",
+            "ALTER TABLE appreciations_generales_new RENAME TO appreciations_generales",
+        ];
+        for stmt in &stmts {
+            sqlx::query(stmt)
+                .execute(&mut *conn)
+                .await
+                .map_err(|e| format!("M013: {}", e))?;
+        }
+        println!("[migrations] M013 appliquée : UNIQUE(eleve_id, periode_id) supprimée.");
+    } else {
+        println!("[migrations] M013 skip : contrainte UNIQUE absente (déjà migrée).");
+    }
+
+    // Toujours créer les index (IF NOT EXISTS = idempotent)
+    let idx_stmts = [
+        "CREATE INDEX IF NOT EXISTS idx_appgen_eleve ON appreciations_generales(eleve_id)",
+        "CREATE INDEX IF NOT EXISTS idx_appgen_periode ON appreciations_generales(periode_id)",
+        "CREATE INDEX IF NOT EXISTS idx_appgen_annee ON appreciations_generales(annee_scolaire_id)",
+        "CREATE INDEX IF NOT EXISTS idx_appgen_version ON appreciations_generales(eleve_id, periode_id, annee_scolaire_id, version)",
+    ];
+    for stmt in &idx_stmts {
+        sqlx::query(stmt)
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| format!("M013 index: {}", e))?;
+    }
+
+    Ok(())
+}
+
 /// Point d'entrée principal : vérifie et applique les migrations V2→V2.1.
 ///
 /// Logique :
 /// 1. Si le fichier DB n'existe pas → skip (fresh install, plugin pas encore initialisé)
 /// 2. Si la table `students` n'existe pas → skip (même raison)
-/// 3. Si PRAGMA user_version >= 10 → déjà appliqué, idempotent
-/// 4. Sinon : backup + 12 migrations avec SAVEPOINT + PRAGMA user_version = 10
+/// 3. Si PRAGMA user_version >= 11 → déjà appliqué, idempotent
+/// 4. Sinon : backup + 12 migrations M001-M012 avec SAVEPOINT + M013 conditionnel + PRAGMA user_version = 11
 pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
     let db_path = get_db_path(app)?;
 
@@ -269,6 +343,9 @@ pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
         }
     }
 
+    // M013 — Supprimer UNIQUE(eleve_id, periode_id) de appreciations_generales
+    apply_m013_if_needed(&mut conn).await?;
+
     // Marquer les migrations comme appliquées
     sqlx::query(&format!("PRAGMA user_version = {}", V2_1_USER_VERSION))
         .execute(&mut conn)
@@ -409,6 +486,9 @@ mod tests {
             }
         }
 
+        // M013 — Supprimer UNIQUE(eleve_id, periode_id) de appreciations_generales
+        apply_m013_if_needed(conn).await.expect("M013 doit s'appliquer");
+
         sqlx::query(&format!("PRAGMA user_version = {}", V2_1_USER_VERSION))
             .execute(&mut *conn)
             .await
@@ -431,7 +511,7 @@ mod tests {
             .fetch_one(&mut conn)
             .await
             .unwrap();
-        assert_eq!(version, V2_1_USER_VERSION, "PRAGMA user_version doit valoir 10");
+        assert_eq!(version, V2_1_USER_VERSION, "PRAGMA user_version doit valoir 11");
     }
 
     #[tokio::test]
@@ -738,5 +818,65 @@ mod tests {
             .unwrap();
             assert_eq!(count, 1, "Colonne '{}' doit exister dans syntheses_lsu", col);
         }
+    }
+
+    #[tokio::test]
+    async fn test_m013_removes_unique_constraint() {
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        let path = tmp.path().to_path_buf();
+
+        let mut conn = setup_v2_db_file(&path).await;
+        let ok = apply_migrations_direct(&mut conn).await;
+        assert!(ok, "Les migrations doivent s'appliquer");
+
+        // Vérifier que UNIQUE(eleve_id, periode_id) n'est plus dans le schema
+        let schema_sql: Option<String> = sqlx::query_scalar(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='appreciations_generales'",
+        )
+        .fetch_optional(&mut conn)
+        .await
+        .unwrap();
+
+        let schema = schema_sql.expect("La table appreciations_generales doit exister");
+        assert!(
+            !schema.to_uppercase().contains("UNIQUE"),
+            "UNIQUE(eleve_id, periode_id) ne doit plus être dans le schema après M013 : {}",
+            schema
+        );
+
+        // Vérifier que idx_appgen_version existe
+        let idx_count: i64 = sqlx::query_scalar(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_appgen_version'",
+        )
+        .fetch_one(&mut conn)
+        .await
+        .unwrap();
+        assert_eq!(idx_count, 1, "Index idx_appgen_version doit exister après M013");
+
+        // Vérifier que plusieurs lignes avec même (eleve_id, periode_id) sont maintenant possibles
+        sqlx::query("INSERT INTO annees_scolaires (label, date_debut, date_fin, active, cloturee) VALUES ('2025-2026', '2025-09-01', '2026-07-05', 1, 0)")
+            .execute(&mut conn).await.unwrap();
+        sqlx::query("INSERT INTO students (first_name) VALUES ('Alice')")
+            .execute(&mut conn).await.unwrap();
+        sqlx::query("INSERT INTO config_periodes (annee_scolaire, type_periode, numero, date_debut, date_fin) VALUES ('2025-2026', 'trimestre', 1, '2025-09-01', '2025-12-20')")
+            .execute(&mut conn).await.unwrap();
+
+        let insert1 = sqlx::query(
+            "INSERT INTO appreciations_generales (eleve_id, periode_id, annee_scolaire_id, texte, version, generated_by) VALUES (1, 1, 1, 'v1', 1, 'llm')",
+        )
+        .execute(&mut conn)
+        .await;
+        assert!(insert1.is_ok(), "Premier insert doit réussir");
+
+        let insert2 = sqlx::query(
+            "INSERT INTO appreciations_generales (eleve_id, periode_id, annee_scolaire_id, texte, version, generated_by) VALUES (1, 1, 1, 'v2', 2, 'manual')",
+        )
+        .execute(&mut conn)
+        .await;
+        assert!(
+            insert2.is_ok(),
+            "Deuxième insert avec même (eleve_id, periode_id) doit réussir sans UNIQUE : {:?}",
+            insert2.err()
+        );
     }
 }

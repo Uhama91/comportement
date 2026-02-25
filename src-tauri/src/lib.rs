@@ -9,6 +9,7 @@ use tauri_plugin_sql::{Migration, MigrationKind};
 
 mod absences;
 mod annee;
+mod appreciation;
 mod audio;
 mod events;
 mod migrations;
@@ -245,6 +246,10 @@ pub fn run() {
             synthese::load_synthese_current,
             synthese::load_synthese_versions,
             synthese::restore_synthese_version,
+            appreciation::save_appreciation,
+            appreciation::load_appreciation_current,
+            appreciation::load_appreciation_versions,
+            appreciation::restore_appreciation_version,
         ])
         .setup(|app| {
             // Logging in debug mode

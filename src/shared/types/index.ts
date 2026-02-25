@@ -307,3 +307,23 @@ export interface AppreciationResult {
   appreciation: string;
   duration_ms: number;
 }
+
+// LSU Vivant — Appreciation Générale versionnée (V2.1-rev2, Story 25.4)
+export interface AppreciationGenerale {
+  id: number;
+  eleveId: number;
+  periodeId: number;
+  anneeScolaireId: number;
+  version: number;
+  texte: string;
+  generatedBy: 'llm' | 'manual';
+  createdAt: string;
+}
+
+export interface AppreciationGeneraleVersion {
+  id: number;
+  version: number;
+  texte: string;
+  generatedBy: 'llm' | 'manual';
+  createdAt: string;
+}

@@ -5,6 +5,7 @@ import { NIVEAU_TO_CYCLE } from '../../../shared/types/domaines-officiels';
 import type { StudentWithSanctions } from '../../../shared/types';
 import type { NiveauCode } from '../../../shared/types';
 import SynthesisCard from './SynthesisCard';
+import AppreciationCard from './AppreciationCard';
 
 interface StudentSynthesisViewProps {
   student: StudentWithSanctions;
@@ -81,11 +82,12 @@ export default function StudentSynthesisView({
           />
         ))}
 
-        {/* Appreciation générale — Story 25.4 placeholder */}
-        <div className="border border-dashed border-slate-200 rounded-lg p-4 opacity-50">
-          <p className="text-xs font-medium text-slate-500 mb-1">Appréciation générale</p>
-          <p className="text-xs text-slate-400 italic">À venir (Story 25.4)</p>
-        </div>
+        <AppreciationCard
+          eleveId={student.id}
+          periodeId={periodeId}
+          anneeScolaireId={anneeScolaireId}
+          studentName={fullName}
+        />
       </div>
     </div>
   );
