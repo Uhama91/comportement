@@ -14,6 +14,7 @@ mod events;
 mod migrations;
 mod models;
 mod sidecar;
+mod synthese;
 mod validation;
 
 /// Commande Tauri exposée au frontend pour déclencher les migrations V2.1.
@@ -240,6 +241,10 @@ pub fn run() {
             absences::load_absences_v2,
             absences::compute_absence_alerts,
             absences::compute_absence_totaux,
+            synthese::save_synthese,
+            synthese::load_synthese_current,
+            synthese::load_synthese_versions,
+            synthese::restore_synthese_version,
         ])
         .setup(|app| {
             // Logging in debug mode

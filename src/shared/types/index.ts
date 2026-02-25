@@ -276,3 +276,34 @@ export interface DownloadProgress {
   total_models: number;
   status: 'downloading' | 'verifying' | 'complete' | 'error';
 }
+
+// LSU Vivant — Syntheses (V2.1-rev2, Epic 25)
+export interface Synthese {
+  id: number;
+  eleveId: number;
+  domaineId: number;
+  periodeId: number;
+  anneeScolaireId: number;
+  version: number;
+  texte: string;
+  generatedBy: 'llm' | 'manual';
+  createdAt: string;
+}
+
+export interface SyntheseVersion {
+  id: number;
+  version: number;
+  texte: string;
+  generatedBy: 'llm' | 'manual';
+  createdAt: string;
+}
+
+export interface SyntheseResult {
+  synthese: string;
+  duration_ms: number;
+}
+
+export interface AppreciationResult {
+  appreciation: string;
+  duration_ms: number;
+}
