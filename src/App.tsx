@@ -4,6 +4,7 @@ import ComportementIndividuelModule from './modules/comportement-individuel';
 import ApprentissageModule from './modules/apprentissage';
 import RegistreAppelModule from './modules/registre-appel';
 import EvaluationsModule from './modules/evaluations';
+import LsuVivantModule from './modules/lsu-vivant';
 import { Sidebar } from './shared/components/Sidebar';
 import { Settings } from './shared/components/Settings';
 import { ExportButton } from './shared/components/ExportButton';
@@ -16,7 +17,7 @@ import { useAppreciationStore } from './shared/stores/appreciationStore';
 import { useModelStore } from './shared/stores/modelStore';
 import { shouldTriggerRewards, markRewardTriggerDone } from './shared/utils/date';
 
-type ModuleId = 'classe' | 'individuel' | 'apprentissage' | 'registre' | 'evaluations';
+type ModuleId = 'classe' | 'individuel' | 'apprentissage' | 'registre' | 'evaluations' | 'lsu';
 
 function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>('classe');
@@ -86,6 +87,8 @@ function App() {
         return <RegistreAppelModule />;
       case 'evaluations':
         return <EvaluationsModule />;
+      case 'lsu':
+        return <LsuVivantModule />;
       default:
         return <ComportementClasseModule onNavigateToStudent={navigateToStudent} />;
     }
@@ -110,8 +113,9 @@ function App() {
             {activeModule === 'apprentissage' && ' — Domaines d\'Apprentissage'}
             {activeModule === 'registre' && ' — Registre d\'Appel'}
             {activeModule === 'evaluations' && ' — Evaluations'}
+            {activeModule === 'lsu' && ' — LSU Vivant'}
           </h1>
-          {(activeModule === 'individuel' || activeModule === 'apprentissage' || activeModule === 'evaluations') && (
+          {(activeModule === 'individuel' || activeModule === 'apprentissage' || activeModule === 'evaluations' || activeModule === 'lsu') && (
             <PeriodSelector />
           )}
         </header>

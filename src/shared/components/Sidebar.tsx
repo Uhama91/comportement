@@ -1,6 +1,6 @@
 import { useWindowSize } from '../hooks/useWindowSize';
 
-type ModuleId = 'classe' | 'individuel' | 'apprentissage' | 'registre' | 'evaluations';
+type ModuleId = 'classe' | 'individuel' | 'apprentissage' | 'registre' | 'evaluations' | 'lsu';
 
 interface SidebarProps {
   activeModule: ModuleId;
@@ -32,6 +32,7 @@ export function Sidebar({
     { id: 'classe', icon: '👥', label: 'Classe' },
     { id: 'registre', icon: '📋', label: 'Appel' },
     { id: 'evaluations', icon: '📝', label: 'Evaluations' },
+    { id: 'lsu', icon: '📄', label: 'LSU Vivant' },
     { id: 'apprentissage', icon: '📚', label: 'Apprentissages' },
     { id: 'individuel', icon: '👤', label: 'Individuel' },
   ];

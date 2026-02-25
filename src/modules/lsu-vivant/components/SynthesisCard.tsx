@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSyntheseStore } from '../../../shared/stores/syntheseStore';
 import VersionModal from './VersionModal';
+import SourcesAccordion from './SourcesAccordion';
 
 interface SynthesisCardProps {
   eleveId: number;
@@ -120,6 +121,13 @@ export default function SynthesisCard({
         eleveId={eleveId}
         domaineId={domaineId}
         domaineNom={domaineNom}
+        periodeId={periodeId}
+        anneeScolaireId={anneeScolaireId}
+      />
+
+      <SourcesAccordion
+        eleveId={eleveId}
+        domaineId={domaineId}
         periodeId={periodeId}
         anneeScolaireId={anneeScolaireId}
       />
