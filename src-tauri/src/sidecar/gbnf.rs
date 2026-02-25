@@ -45,6 +45,32 @@ escape ::= "\"" | "\\" | "/" | "n" | "r" | "t"
     )
 }
 
+/// Generate a static GBNF grammar for the synthese LSU response.
+/// Grammar constrains LLM output to: {"synthese": "texte"}
+pub fn generate_synthese_gbnf() -> String {
+    r#"root ::= "{" ws "\"synthese\":" ws string ws "}"
+ws ::= [ \t\n]*
+string ::= "\"" chars "\""
+chars ::= char+
+char ::= [^"\\] | "\\" escape
+escape ::= "\"" | "\\" | "/" | "n" | "r" | "t"
+"#
+    .to_string()
+}
+
+/// Generate a static GBNF grammar for the appreciation generale response.
+/// Grammar constrains LLM output to: {"appreciation": "texte"}
+pub fn generate_appreciation_gbnf() -> String {
+    r#"root ::= "{" ws "\"appreciation\":" ws string ws "}"
+ws ::= [ \t\n]*
+string ::= "\"" chars "\""
+chars ::= char+
+char ::= [^"\\] | "\\" escape
+escape ::= "\"" | "\\" | "/" | "n" | "r" | "t"
+"#
+    .to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,5 +150,23 @@ mod tests {
         let grammar = generate_gbnf(&domains);
         // Root should allow comma-separated results
         assert!(grammar.contains(r#"(ws "," ws result)*"#));
+    }
+
+    #[test]
+    fn test_synthese_gbnf_contains_key() {
+        let grammar = generate_synthese_gbnf();
+        assert!(grammar.contains("synthese"));
+        assert!(grammar.contains("root ::="));
+        assert!(grammar.contains("chars ::= char+"));
+        assert!(!grammar.contains("appreciation")); // correct key, not the other
+    }
+
+    #[test]
+    fn test_appreciation_gbnf_contains_key() {
+        let grammar = generate_appreciation_gbnf();
+        assert!(grammar.contains("appreciation"));
+        assert!(grammar.contains("root ::="));
+        assert!(grammar.contains("chars ::= char+"));
+        assert!(!grammar.contains("synthese")); // correct key, not the other
     }
 }

@@ -148,6 +148,172 @@ pub fn build_prompt(domains: &[DomainContext], dictated_text: &str) -> PromptBui
     }
 }
 
+// ─── V2.1 — Job 2 (Synthese) + Job 3 (Appreciation) ───
+
+/// A single pedagogical event for prompt construction
+#[derive(Debug, Clone)]
+pub struct EventContext {
+    pub event_type: String, // 'observation' | 'evaluation' | 'motif_sanction'
+    pub observations: Option<String>,
+    pub niveau_lsu: Option<String>,
+    pub lecon: Option<String>,
+    pub created_at: String,
+}
+
+/// A domain synthesis entry for appreciation prompt construction
+#[derive(Debug, Clone)]
+pub struct SynthesisContext {
+    pub domaine_nom: String,
+    pub synthese_text: String,
+}
+
+const SYSTEM_PROMPT_SYNTHESE: &str = r#"Assistant pedagogique. Tu rediges une synthese pour le Livret Scolaire Unique (LSU).
+A partir des observations et evaluations, produis un texte de synthese coherent.
+
+REGLES :
+- Style ecrit professionnel, 3e personne ("L'eleve...").
+- 3-5 phrases. Maximum 300 caracteres.
+- Mentionne progres, points forts et axes d'amelioration.
+- Jamais de jugement global negatif. Toujours constructif.
+- Reponds en JSON : { "synthese": "texte" }"#;
+
+const SYSTEM_PROMPT_APPRECIATION: &str = r#"Assistant pedagogique. Tu rediges l'appreciation generale pour le Livret Scolaire Unique (LSU).
+A partir des syntheses par domaine et du comportement, produis un texte transversal.
+
+REGLES :
+- Style bienveillant, 3e personne ("L'eleve...").
+- 3-6 phrases. Maximum 500 caracteres.
+- Mentionne domaines ou l'eleve excelle et axes de progres.
+- JAMAIS punitif. Toujours encourageant et constructif.
+- Ne mentionne pas sanctions directement. Evoque le comportement positivement.
+- Reponds en JSON : { "appreciation": "texte" }"#;
+
+/// Build the system + user prompt for Job 2 — Synthese LSU par domaine.
+///
+/// Events are assumed to be in chronological order (oldest first).
+/// If the prompt exceeds the token budget, oldest events are dropped first.
+pub fn build_synthese_prompt(
+    events: &[EventContext],
+    domaine_nom: &str,
+    student_name: &str,
+) -> PromptBuilderResult {
+    let system_prompt = SYSTEM_PROMPT_SYNTHESE.to_string();
+    let user_prefix = format!(
+        "Eleve: {}\nDomaine: {}\n\nEvenements (chronologiques) :\n",
+        student_name, domaine_nom
+    );
+
+    let format_event = |e: &EventContext, idx: usize| -> String {
+        match e.event_type.as_str() {
+            "evaluation" => format!(
+                "{}. [{}] Evaluation - Lecon: {}, Niveau: {}",
+                idx + 1,
+                e.created_at,
+                e.lecon.as_deref().unwrap_or("?"),
+                e.niveau_lsu.as_deref().unwrap_or("?")
+            ),
+            "motif_sanction" => format!(
+                "{}. [{}] Incident: {}",
+                idx + 1,
+                e.created_at,
+                e.observations.as_deref().unwrap_or("")
+            ),
+            _ => format!(
+                "{}. [{}] Observation: {}",
+                idx + 1,
+                e.created_at,
+                e.observations.as_deref().unwrap_or("")
+            ),
+        }
+    };
+
+    if events.is_empty() {
+        let user_prompt = format!("{}Aucun evenement.", user_prefix);
+        let tokens = estimate_tokens(&system_prompt) + estimate_tokens(&user_prompt);
+        return PromptBuilderResult { system_prompt, user_prompt, estimated_tokens: tokens };
+    }
+
+    // Try progressively removing oldest events until budget fits
+    let mut start = 0;
+    loop {
+        let slice = &events[start..];
+        let lines: Vec<String> = slice
+            .iter()
+            .enumerate()
+            .map(|(i, e)| format_event(e, i))
+            .collect();
+        let user_prompt = format!("{}{}", user_prefix, lines.join("\n"));
+        let tokens = estimate_tokens(&system_prompt) + estimate_tokens(&user_prompt);
+
+        if tokens <= INPUT_BUDGET || slice.len() <= 1 {
+            return PromptBuilderResult { system_prompt, user_prompt, estimated_tokens: tokens };
+        }
+        start += 1;
+    }
+}
+
+/// Build the system + user prompt for Job 3 — Appreciation generale.
+///
+/// If the prompt exceeds the token budget, the longest syntheses are truncated first.
+pub fn build_appreciation_prompt(
+    syntheses: &[SynthesisContext],
+    behavior_summary: &str,
+    student_name: &str,
+) -> PromptBuilderResult {
+    let system_prompt = SYSTEM_PROMPT_APPRECIATION.to_string();
+
+    fn format_user(syns: &[SynthesisContext], name: &str, behavior: &str) -> String {
+        let lines: Vec<String> = syns
+            .iter()
+            .map(|s| format!("- {} : {}", s.domaine_nom, s.synthese_text))
+            .collect();
+        format!(
+            "Eleve: {}\n\nSyntheses par domaine :\n{}\n\nComportement :\n{}",
+            name,
+            lines.join("\n"),
+            behavior
+        )
+    }
+
+    let user_prompt = format_user(syntheses, student_name, behavior_summary);
+    let full_tokens = estimate_tokens(&system_prompt) + estimate_tokens(&user_prompt);
+
+    if full_tokens <= INPUT_BUDGET || syntheses.is_empty() {
+        return PromptBuilderResult {
+            system_prompt,
+            user_prompt,
+            estimated_tokens: full_tokens,
+        };
+    }
+
+    // Truncate longest syntheses first until budget fits
+    let mut truncated: Vec<SynthesisContext> = syntheses.to_vec();
+    loop {
+        let max_idx = truncated
+            .iter()
+            .enumerate()
+            .max_by_key(|(_, s)| s.synthese_text.len())
+            .map(|(i, _)| i);
+
+        let Some(idx) = max_idx else { break };
+        if truncated[idx].synthese_text.len() <= MAX_OBS_CHARS_TRUNCATED {
+            break;
+        }
+        truncated[idx].synthese_text =
+            truncate(&truncated[idx].synthese_text, MAX_OBS_CHARS_TRUNCATED);
+
+        let up = format_user(&truncated, student_name, behavior_summary);
+        let tokens = estimate_tokens(&system_prompt) + estimate_tokens(&up);
+        if tokens <= INPUT_BUDGET {
+            return PromptBuilderResult { system_prompt, user_prompt: up, estimated_tokens: tokens };
+        }
+    }
+
+    let user_prompt_final = format_user(&truncated, student_name, behavior_summary);
+    let tokens = estimate_tokens(&system_prompt) + estimate_tokens(&user_prompt_final);
+    PromptBuilderResult { system_prompt, user_prompt: user_prompt_final, estimated_tokens: tokens }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -295,5 +461,86 @@ mod tests {
         assert!(result.system_prompt.contains("Aussi court."));
         // Should not contain the truncation marker section
         assert!(!result.system_prompt.contains("resumees"));
+    }
+
+    // ─── Tests Job 2 (Synthese) + Job 3 (Appreciation) ───
+
+    #[test]
+    fn test_build_synthese_prompt_basic() {
+        let events = vec![EventContext {
+            event_type: "observation".to_string(),
+            observations: Some("Bonne participation en cours.".to_string()),
+            niveau_lsu: None,
+            lecon: None,
+            created_at: "2026-01-15".to_string(),
+        }];
+        let result = build_synthese_prompt(&events, "Francais", "Alice");
+        assert!(result.system_prompt.contains("synthese"));
+        assert!(result.user_prompt.contains("Alice"));
+        assert!(result.user_prompt.contains("Francais"));
+        assert!(result.user_prompt.contains("Bonne participation en cours"));
+        assert!(result.estimated_tokens > 0);
+        assert!(result.estimated_tokens <= INPUT_BUDGET);
+    }
+
+    #[test]
+    fn test_build_synthese_prompt_truncates_old_events() {
+        // 55 events with long observations — oldest should be dropped to fit budget
+        let long_obs = "X".repeat(200);
+        let events: Vec<EventContext> = (0..55)
+            .map(|i| EventContext {
+                event_type: "observation".to_string(),
+                observations: Some(format!("Evenement {} : {}", i, long_obs)),
+                niveau_lsu: None,
+                lecon: None,
+                created_at: format!("2026-01-{:02}T10:00:00", (i % 28) + 1),
+            })
+            .collect();
+
+        let result = build_synthese_prompt(&events, "Francais", "Alice");
+        assert!(
+            result.estimated_tokens <= INPUT_BUDGET,
+            "Token budget depasse: {}",
+            result.estimated_tokens
+        );
+        // Most recent event (index 54) should be retained
+        assert!(result.user_prompt.contains("Evenement 54"));
+    }
+
+    #[test]
+    fn test_build_appreciation_prompt_basic() {
+        let syntheses = vec![
+            SynthesisContext {
+                domaine_nom: "Francais".to_string(),
+                synthese_text: "Bonne lecture.".to_string(),
+            },
+            SynthesisContext {
+                domaine_nom: "Mathematiques".to_string(),
+                synthese_text: "Progresse en calcul.".to_string(),
+            },
+        ];
+        let result =
+            build_appreciation_prompt(&syntheses, "Comportement global satisfaisant.", "Alice");
+        assert!(result.system_prompt.contains("appreciation"));
+        assert!(result.user_prompt.contains("Alice"));
+        assert!(result.user_prompt.contains("Francais"));
+        assert!(result.user_prompt.contains("Bonne lecture"));
+        assert!(result.user_prompt.contains("Comportement global satisfaisant"));
+        assert!(result.estimated_tokens <= INPUT_BUDGET);
+    }
+
+    #[test]
+    fn test_build_appreciation_prompt_truncates_long_syntheses() {
+        let long_text = "X".repeat(3000);
+        let syntheses: Vec<SynthesisContext> = (0..5)
+            .map(|i| SynthesisContext {
+                domaine_nom: format!("Domaine {}", i),
+                synthese_text: long_text.clone(),
+            })
+            .collect();
+        let result =
+            build_appreciation_prompt(&syntheses, "Bon comportement.", "Alice");
+        // Syntheses should be truncated (contain "...")
+        assert!(result.user_prompt.contains("..."));
     }
 }

@@ -1,6 +1,6 @@
 use super::gbnf::{self, DomainInfo};
 use super::manager::SidecarManager;
-use super::prompt_builder::{self, DomainContext};
+use super::prompt_builder::{self, DomainContext, EventContext, SynthesisContext};
 use super::types::{SidecarError, SidecarName};
 use log::info;
 use serde::{Deserialize, Serialize};
@@ -729,6 +729,390 @@ pub async fn classify_and_merge(
     })
 }
 
+// ─── V2.1 — Job 2 (Synthese) + Job 3 (Appreciation) ───
+
+/// Response type for Job 2 — Synthese LSU
+#[derive(Debug, Deserialize)]
+struct LlmSyntheseResponse {
+    synthese: String,
+}
+
+/// Response type for Job 3 — Appreciation generale
+#[derive(Debug, Deserialize)]
+struct LlmAppreciationResponse {
+    appreciation: String,
+}
+
+/// Result returned to the frontend for Job 2
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SyntheseResult {
+    pub synthese: String,
+    pub duration_ms: u64,
+}
+
+/// Result returned to the frontend for Job 3
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AppreciationResult {
+    pub appreciation: String,
+    pub duration_ms: u64,
+}
+
+/// Generic LLM request helper — sends system+user prompt with grammar, returns raw content string.
+///
+/// Extracted to avoid duplicating HTTP code across Jobs 2 and 3.
+async fn send_simple_llm_request(
+    system_prompt: &str,
+    user_prompt: &str,
+    grammar: &str,
+    max_tokens: u32,
+    timeout_secs: u64,
+) -> Result<String, SidecarError> {
+    let body = serde_json::json!({
+        "model": "qwen2.5-coder",
+        "messages": [
+            { "role": "system", "content": system_prompt },
+            { "role": "user", "content": user_prompt }
+        ],
+        "temperature": 0.1,
+        "max_tokens": max_tokens,
+        "grammar": grammar
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(timeout_secs))
+        .build()
+        .map_err(|e| SidecarError::Internal(e.to_string()))?;
+
+    let response = client
+        .post("http://127.0.0.1:8080/v1/chat/completions")
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| {
+            SidecarError::Internal(format!("Requete vers llama-server echouee: {}", e))
+        })?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body_text = response.text().await.unwrap_or_default();
+        return Err(SidecarError::Internal(format!(
+            "llama-server a repondu avec le code {}: {}",
+            status, body_text
+        )));
+    }
+
+    let completion: ChatCompletionResponse = response.json().await.map_err(|e| {
+        SidecarError::Internal(format!("Reponse JSON invalide de llama-server: {}", e))
+    })?;
+
+    Ok(completion
+        .choices
+        .first()
+        .map(|c| c.message.content.clone())
+        .unwrap_or_default())
+}
+
+/// DB row for events query (Job 2)
+#[derive(Debug, sqlx::FromRow)]
+struct EventForSyntheseRow {
+    event_type: String,
+    observations: Option<String>,
+    niveau_lsu: Option<String>,
+    lecon: Option<String>,
+    created_at: String,
+}
+
+/// Load all pedagogical events for a student/domain/period from DB (Job 2)
+async fn load_events_for_synthese(
+    pool: &sqlx::SqlitePool,
+    eleve_id: i64,
+    domaine_id: i64,
+    periode_id: i64,
+    annee_id: i64,
+) -> Result<Vec<EventContext>, SidecarError> {
+    let rows: Vec<EventForSyntheseRow> = sqlx::query_as(
+        "SELECT type as event_type, observations, niveau_lsu, lecon, created_at
+         FROM evenements_pedagogiques
+         WHERE eleve_id = ? AND domaine_id = ? AND periode_id = ? AND annee_scolaire_id = ?
+         ORDER BY created_at ASC",
+    )
+    .bind(eleve_id)
+    .bind(domaine_id)
+    .bind(periode_id)
+    .bind(annee_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| SidecarError::Internal(format!("Requete evenements echouee: {}", e)))?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| EventContext {
+            event_type: r.event_type,
+            observations: r.observations,
+            niveau_lsu: r.niveau_lsu,
+            lecon: r.lecon,
+            created_at: r.created_at,
+        })
+        .collect())
+}
+
+/// DB row for syntheses query (Job 3)
+#[derive(Debug, sqlx::FromRow)]
+struct SyntheseForAppreciationRow {
+    domaine_nom: String,
+    synthese_text: String,
+}
+
+/// Load the latest syntheses for each domain for a student/period (Job 3)
+async fn load_syntheses_for_appreciation(
+    pool: &sqlx::SqlitePool,
+    eleve_id: i64,
+    periode_id: i64,
+    annee_id: i64,
+) -> Result<Vec<SynthesisContext>, SidecarError> {
+    let rows: Vec<SyntheseForAppreciationRow> = sqlx::query_as(
+        "SELECT d.nom as domaine_nom, s.texte as synthese_text
+         FROM syntheses_lsu s
+         JOIN domaines_apprentissage d ON d.id = s.domaine_id
+         WHERE s.eleve_id = ? AND s.periode_id = ? AND s.annee_scolaire_id = ?
+           AND s.version = (
+             SELECT MAX(s2.version) FROM syntheses_lsu s2
+             WHERE s2.eleve_id = s.eleve_id AND s2.periode_id = s.periode_id
+               AND s2.domaine_id = s.domaine_id AND s2.annee_scolaire_id = s.annee_scolaire_id
+           )
+         ORDER BY d.ordre_affichage ASC",
+    )
+    .bind(eleve_id)
+    .bind(periode_id)
+    .bind(annee_id)
+    .fetch_all(pool)
+    .await
+    .map_err(|e| SidecarError::Internal(format!("Requete syntheses echouee: {}", e)))?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| SynthesisContext {
+            domaine_nom: r.domaine_nom,
+            synthese_text: r.synthese_text,
+        })
+        .collect())
+}
+
+/// Build a textual behavior summary (incidents + absences) for a student/period
+async fn load_behavior_summary(
+    pool: &sqlx::SqlitePool,
+    eleve_id: i64,
+    periode_id: i64,
+    annee_id: i64,
+) -> Result<String, SidecarError> {
+    let incidents: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM evenements_pedagogiques
+         WHERE eleve_id = ? AND type = 'motif_sanction' AND periode_id = ?",
+    )
+    .bind(eleve_id)
+    .bind(periode_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| SidecarError::Internal(format!("Requete incidents echouee: {}", e)))?;
+
+    let absences: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM absences_v2
+         WHERE eleve_id = ? AND type_absence = 'injustifiee' AND annee_scolaire_id = ?",
+    )
+    .bind(eleve_id)
+    .bind(annee_id)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| SidecarError::Internal(format!("Requete absences echouee: {}", e)))?;
+
+    Ok(format!(
+        "{} incidents de comportement. {} absences injustifiees.",
+        incidents, absences
+    ))
+}
+
+/// Validate synthese text — rejects empty string
+fn validate_synthese_text(text: &str) -> Result<String, SidecarError> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err(SidecarError::Internal(
+            "Synthese vide retournee par le LLM".to_string(),
+        ));
+    }
+    Ok(trimmed.to_string())
+}
+
+/// Validate appreciation text — rejects empty string
+fn validate_appreciation_text(text: &str) -> Result<String, SidecarError> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return Err(SidecarError::Internal(
+            "Appreciation vide retournee par le LLM".to_string(),
+        ));
+    }
+    Ok(trimmed.to_string())
+}
+
+/// Generate a LSU synthese for a student/domain/period using the Qwen LLM (Job 2).
+///
+/// Pipeline:
+/// 1. Load domain name + events from DB
+/// 2. Build synthese prompt (ADR-008 budget)
+/// 3. Start llama-server if needed
+/// 4. Send request with static GBNF grammar
+/// 5. Parse + validate response
+/// 6. Auto-stop llama (ADR-002)
+#[tauri::command]
+pub async fn generate_synthese(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, SidecarManager>,
+    eleve_id: i64,
+    domaine_id: i64,
+    periode_id: i64,
+    annee_scolaire_id: i64,
+    student_name: String,
+) -> Result<SyntheseResult, String> {
+    let start = Instant::now();
+
+    let pool = open_db_pool(&app).await.map_err(|e| e.to_string())?;
+
+    // Fetch domain name for the prompt
+    let domaine_nom: String = sqlx::query_scalar(
+        "SELECT nom FROM domaines_apprentissage WHERE id = ?",
+    )
+    .bind(domaine_id)
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| format!("Domaine introuvable (id={}): {}", domaine_id, e))?;
+
+    let events = load_events_for_synthese(&pool, eleve_id, domaine_id, periode_id, annee_scolaire_id)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let prompt = prompt_builder::build_synthese_prompt(&events, &domaine_nom, &student_name);
+    let grammar = gbnf::generate_synthese_gbnf();
+
+    // Start llama-server if not running
+    let model_path = resolve_model_path(&app).map_err(|e| e.to_string())?;
+    let status = state.get_status().await;
+    if !status.llama.running {
+        info!("llama-server non demarre, lancement automatique (generate_synthese)...");
+        state
+            .start(&app, SidecarName::Llama, model_path.to_string_lossy().to_string(), None)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    let content = send_simple_llm_request(
+        &prompt.system_prompt,
+        &prompt.user_prompt,
+        &grammar,
+        512,
+        30,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    state.increment_request_count(SidecarName::Llama).await;
+
+    let llm_response: LlmSyntheseResponse = serde_json::from_str(&content).map_err(|e| {
+        format!("JSON synthese invalide (GBNF non respectee?): {}. Contenu: {}", e, content)
+    })?;
+
+    let synthese = validate_synthese_text(&llm_response.synthese).map_err(|e| e.to_string())?;
+
+    let duration_ms = start.elapsed().as_millis() as u64;
+    info!(
+        "Synthese generee en {}ms pour eleve_id={} domaine_id={}",
+        duration_ms, eleve_id, domaine_id
+    );
+
+    state.auto_stop_after_task(&app, SidecarName::Llama).await;
+
+    Ok(SyntheseResult { synthese, duration_ms })
+}
+
+/// Generate a LSU appreciation generale for a student/period using the Qwen LLM (Job 3).
+///
+/// Pipeline:
+/// 1. Load existing syntheses + behavior summary from DB
+/// 2. Build appreciation prompt (ADR-008 budget)
+/// 3. Start llama-server if needed
+/// 4. Send request with static GBNF grammar
+/// 5. Parse + validate response
+/// 6. Auto-stop llama (ADR-002)
+#[tauri::command]
+pub async fn generate_appreciation(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, SidecarManager>,
+    eleve_id: i64,
+    periode_id: i64,
+    annee_scolaire_id: i64,
+    student_name: String,
+) -> Result<AppreciationResult, String> {
+    let start = Instant::now();
+
+    let pool = open_db_pool(&app).await.map_err(|e| e.to_string())?;
+
+    let syntheses =
+        load_syntheses_for_appreciation(&pool, eleve_id, periode_id, annee_scolaire_id)
+            .await
+            .map_err(|e| e.to_string())?;
+
+    let behavior =
+        load_behavior_summary(&pool, eleve_id, periode_id, annee_scolaire_id)
+            .await
+            .map_err(|e| e.to_string())?;
+
+    let prompt =
+        prompt_builder::build_appreciation_prompt(&syntheses, &behavior, &student_name);
+    let grammar = gbnf::generate_appreciation_gbnf();
+
+    // Start llama-server if not running
+    let model_path = resolve_model_path(&app).map_err(|e| e.to_string())?;
+    let status = state.get_status().await;
+    if !status.llama.running {
+        info!("llama-server non demarre, lancement automatique (generate_appreciation)...");
+        state
+            .start(&app, SidecarName::Llama, model_path.to_string_lossy().to_string(), None)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    let content = send_simple_llm_request(
+        &prompt.system_prompt,
+        &prompt.user_prompt,
+        &grammar,
+        768,
+        45,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
+
+    state.increment_request_count(SidecarName::Llama).await;
+
+    let llm_response: LlmAppreciationResponse =
+        serde_json::from_str(&content).map_err(|e| {
+            format!(
+                "JSON appreciation invalide (GBNF non respectee?): {}. Contenu: {}",
+                e, content
+            )
+        })?;
+
+    let appreciation =
+        validate_appreciation_text(&llm_response.appreciation).map_err(|e| e.to_string())?;
+
+    let duration_ms = start.elapsed().as_millis() as u64;
+    info!(
+        "Appreciation generee en {}ms pour eleve_id={} periode_id={}",
+        duration_ms, eleve_id, periode_id
+    );
+
+    state.auto_stop_after_task(&app, SidecarName::Llama).await;
+
+    Ok(AppreciationResult { appreciation, duration_ms })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -966,5 +1350,53 @@ mod tests {
         let result = recover_truncated_json(json);
         // The `}` is never closed, so no valid items
         assert!(result.is_none());
+    }
+
+    // ─── Tests Job 2 (Synthese) + Job 3 (Appreciation) ───
+
+    #[test]
+    fn test_parse_synthese_response() {
+        let json = r#"{"synthese": "L'eleve progresse bien en lecture."}"#;
+        let result: LlmSyntheseResponse = serde_json::from_str(json).unwrap();
+        assert_eq!(result.synthese, "L'eleve progresse bien en lecture.");
+    }
+
+    #[test]
+    fn test_parse_appreciation_response() {
+        let json = r#"{"appreciation": "L'eleve fait preuve de serieux dans l'ensemble des matieres."}"#;
+        let result: LlmAppreciationResponse = serde_json::from_str(json).unwrap();
+        assert!(result.appreciation.contains("serieux"));
+    }
+
+    #[test]
+    fn test_reject_empty_synthese() {
+        let err = validate_synthese_text("  ");
+        assert!(err.is_err());
+        assert!(err.unwrap_err().to_string().contains("vide"));
+    }
+
+    #[test]
+    fn test_reject_empty_appreciation() {
+        let err = validate_appreciation_text("");
+        assert!(err.is_err());
+        assert!(err.unwrap_err().to_string().contains("vide"));
+    }
+
+    #[test]
+    fn test_synthese_response_with_accents() {
+        let json = r#"{"synthese": "L'\u00e9l\u00e8ve d\u00e9montre des progr\u00e8s remarquables."}"#;
+        let result: LlmSyntheseResponse = serde_json::from_str(json).unwrap();
+        assert!(result.synthese.contains("progr"));
+        let ok = validate_synthese_text(&result.synthese);
+        assert!(ok.is_ok());
+    }
+
+    #[test]
+    fn test_appreciation_response_with_accents() {
+        let json = r#"{"appreciation": "Tr\u00e8s bonne ann\u00e9e, l'\u00e9l\u00e8ve est epanoui."}"#;
+        let result: LlmAppreciationResponse = serde_json::from_str(json).unwrap();
+        assert!(result.appreciation.contains("bonne"));
+        let ok = validate_appreciation_text(&result.appreciation);
+        assert!(ok.is_ok());
     }
 }

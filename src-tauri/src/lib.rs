@@ -224,6 +224,8 @@ pub fn run() {
             sidecar::transcription::transcribe_audio,
             sidecar::structuration::structure_text,
             sidecar::structuration::classify_and_merge,
+            sidecar::structuration::generate_synthese,
+            sidecar::structuration::generate_appreciation,
             validation::validate_and_insert_observations,
             models::checker::check_models_status,
             models::downloader::download_models,

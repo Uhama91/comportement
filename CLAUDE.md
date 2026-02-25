@@ -20,13 +20,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - IA locale 100% offline : pipeline séquentiel push-to-talk, un seul modèle actif à la fois
 - Périodes scolaires configurables (trimestres/semestres)
 
-**V2.1 (en cours — refonte Module 3 + LSU + multi-niveaux) :**
-- Refonte Module 3 : LLM classificateur+fusionneur (pas générateur), GBNF dynamique, review panel inline
-- Multi-niveaux : élèves PS→CM2 dans une même classe, domaines par cycle (C1/C2/C3)
-- Année scolaire : création → active → clôturée (read-only), guard Rust
-- Export LSU XML : Livret Scolaire Unique officiel via quick-xml Rust
-- Undo atomique : colonne previous_observations, transaction SQL BEGIN/COMMIT
-- Migrations V2→V2.1 : 8 migrations additives avec backup fichier + savepoints SQL
+**V2.1-rev2 (en cours — 5 modules, event sourcing, LSU vivant) :**
+- Refonte Module 3 : LLM classificateur+fusionneur, GBNF dynamique, review panel inline, undo atomique
+- Multi-niveaux : eleves PS→CM2 dans une meme classe, domaines par cycle (C1/C2/C3)
+- Annee scolaire : creation → active → cloturee (read-only), guard Rust
+- Event sourcing : table `evenements_pedagogiques` (observations, evaluations, motifs sanctions)
+- Registre d'appel : absences par demi-journee, 3 types, motifs, retards, alertes legales
+- Module Evaluations : saisie individuelle/lot, 4 niveaux LSU, historique chronologique
+- Micro dual-mode par eleve : tap toggle / press & hold push-to-talk (300ms seuil)
+- LSU Vivant (a venir) : synthese LLM progressive + appreciation generale + export XML
+- Migrations V2→V2.1 : 12 migrations (M001-M012, user_version 10) avec backup + savepoints
 
 ## Stack Technique
 
@@ -131,14 +134,21 @@ Tous les documents V2 sont dans `_bmad-output/planning-artifacts/`
 - **ADR-005 : Audio capture** — tauri-plugin-mic-recorder Plan A, Web Audio API Plan B
 - **ADR-006 : Qwen 2.5 Coder 1.5B** — Pas Qwen3 pour V2.0, évaluer en V2.1
 
-**V2.1 (ADRs — voir `architecture-v2.1.md`) :**
-- **ADR-007 : GBNF dynamique** — Grammaire générée par requête depuis DB (domaines actifs par cycle élève)
+**V2.1-rev2 (ADRs — voir `architecture-v2.1.md`) :**
+- **ADR-007 : GBNF dynamique** — Grammaire generee par requete depuis DB (domaines actifs par cycle eleve)
 - **ADR-008 : Budget tokens adaptatif** — ctx-size 2048, troncature intelligente du prompt
-- **ADR-009 : Review panel inline** — Panneau diff Avant/Après (pas de modal), Zustand reviewStore
+- **ADR-009 : Review panel inline** — Panneau diff Avant/Apres (pas de modal), Zustand reviewStore
 - **ADR-010 : Undo atomique** — Colonne previous_observations, transaction SQL BEGIN/COMMIT
-- **ADR-011 : Année scolaire flag+guard** — Champ cloturee en DB, guard Rust check_annee_not_closed
-- **ADR-012 : Export LSU XML** — Crate quick-xml Rust, mapping échelle 4 niveaux
+- **ADR-011 : Annee scolaire flag+guard** — Champ cloturee en DB, guard Rust check_annee_not_closed
+- **ADR-012 : Export LSU XML** — Crate quick-xml Rust, mapping echelle 4 niveaux
 - **ADR-013 : Migrations backup+savepoints** — Backup fichier SQLite + SQL SAVEPOINT par migration
+- **ADR-014 : Event sourcing leger** — Table evenements_pedagogiques append-only, UUID + synced_at
+- **ADR-015 : Syntheses LSU versionnees** — Table syntheses_lsu, version incrementale, generated_by
+- **ADR-016 : Micro dual-mode** — Tap toggle (>300ms) / press & hold push-to-talk (<300ms)
+- **ADR-017 : 3 jobs LLM** — Classifier domaine, synthetiser par domaine, appreciation generale
+- **ADR-018 : Registre appel demi-journee** — Table absences_v2, UNIQUE(eleve, date, demi_journee)
+- **ADR-019 : Alerte legale 30 jours** — Rolling window 30j, seuil 4 demi-journees injustifiees
+- **ADR-020 : Totaux LSU par periode** — Justifiees + injustifiees agrege par periode
 
 ## Commandes de développement
 
@@ -162,7 +172,7 @@ cargo test --manifest-path src-tauri/Cargo.toml
 npx tsc --noEmit
 ```
 
-## Modules V2 implémentés
+## Modules implementes (V2 + V2.1)
 
 ### Module 1 — Comportement Classe (Epic 11)
 - Motifs sanctions obligatoires (radio buttons + modal 3e avertissement)
@@ -176,12 +186,30 @@ npx tsc --noEmit
 - Modification/suppression incidents (edit inline, confirmation)
 - Navigation depuis Module 1 (double-clic sur carte élève)
 
-### Module 3 — Domaines d'Apprentissage (Epic 15)
-- Tableau domaines x élèves (AppreciationTable)
-- Pipeline LLM complet (dictée vocale → Whisper → texte → Qwen → observations structurées)
-- Résultat structuré éditable (StructuredObservations)
-- Saisie manuelle alternative (ManualEntryForm)
-- Domaines paramétrables dans Settings (DomainsSettings)
+### Module 3 — Domaines d'Apprentissage (Epic 15 + Epic 19-20)
+- Tableau domaines x eleves (AppreciationTable)
+- Pipeline LLM complet (dictee vocale → Whisper → texte → Qwen → observations structurees)
+- GBNF dynamique par cycle eleve (ADR-007), classification auto domaine
+- Micro dual-mode par eleve : tap toggle / press & hold (useDualModeMic)
+- Undo atomique (previous_observations, bouton retour)
+- Saisie manuelle avec filtre cycle + edition (ManualEntryForm)
+- Domaines parametrables dans Settings (DomainsSettings)
+
+### Module 4 — Registre d'Appel (Epic 23)
+- Grille appel matin/apres-midi par semaine (AttendanceGrid)
+- Navigation semaine precedente/suivante
+- 3 types d'absence : justifiee, medicale, injustifiee
+- Modal detail : type, motif (texte libre), retard (toggle)
+- Saisie retroactive (dates passees)
+- Alerte legale : 4+ demi-journees injustifiees sur 30 jours glissants
+- Totaux LSU par periode (justifiees + injustifiees)
+- Backend Rust complet (absences/mod.rs, 14 tests, 7 commandes Tauri)
+
+### Module 5 — Evaluations (Epic 24)
+- Saisie individuelle : selection eleve + domaine + lecon + niveau LSU + observations
+- Saisie par lot : grille eleves x 4 niveaux LSU pour une lecon/domaine
+- Historique chronologique par eleve avec filtres domaine/periode
+- Reutilise eventStore (type='evaluation'), pas de nouveau backend Rust
 
 ---
 
@@ -219,3 +247,4 @@ Planning (PRD, Architecture, Epics) + Implementation (Epics 1-8) en 3 jours. Tag
 | 2026-02-24 | Epic 22 COMPLET (4/4) : migrations rev2, event store, micro dual-mode, classification→event sourcing | `v2_1_rev2.rs`, `events/mod.rs`, `eventStore.ts`, `useDualModeMic.ts`, `TranscriptPreview.tsx` |
 | 2026-02-24 | Epic 23 COMPLET (3/3) : registre appel, motifs/retards/retroactivite, alertes legales+totaux LSU (14 tests Rust) | `absences/mod.rs`, `absenceStore.ts`, `AttendanceGrid.tsx`, `AbsenceDetailModal.tsx`, `AbsenceSummary.tsx` |
 | 2026-02-24 | Epic 24 COMPLET (3/3) : evaluations individuelles, saisie par lot, historique chronologique (reuse eventStore) | `EvaluationForm.tsx`, `BatchEvaluation.tsx`, `EvaluationHistory.tsx`, `evaluations/index.tsx` |
+| 2026-02-25 | Story 25.1 : Jobs LLM 2+3 — generate_synthese + generate_appreciation (Rust-only, 14 tests, 127 total) | `gbnf.rs`, `prompt_builder.rs`, `structuration.rs`, `lib.rs` |
