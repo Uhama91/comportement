@@ -146,11 +146,6 @@ export interface ObservationResult {
   commentaire: string;
 }
 
-export interface StructurationResult {
-  observations: ObservationResult[];
-  duration_ms: number;
-}
-
 // V2.1 — Classification + Fusion result (Story 19.3, multi-domain)
 export interface ClassificationResultItem {
   domaine_id: number;
@@ -163,13 +158,6 @@ export interface ClassificationResultItem {
 export interface ClassificationResults {
   items: ClassificationResultItem[];
   duration_ms: number;
-}
-
-// Validation Layer 4 Result (Story 13.6)
-export interface InsertResult {
-  success: boolean;
-  inserted_ids: number[];
-  count: number;
 }
 
 // Event Sourcing — Journal Pedagogique (V2.1-rev2, ADR-014)
