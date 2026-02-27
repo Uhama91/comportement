@@ -3,7 +3,14 @@ pub mod v2_1_rev2;
 
 use sqlx::Connection;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
+use tokio::sync::Mutex;
 use tauri::{AppHandle, Emitter, Manager};
+
+/// Guard pour empêcher l'exécution concurrente des migrations (setup + ensure_v2_1_migrations).
+static MIGRATION_LOCK: Mutex<()> = Mutex::const_new(());
+/// Flag pour savoir si les migrations ont déjà été appliquées avec succès.
+static MIGRATIONS_DONE: AtomicBool = AtomicBool::new(false);
 
 /// Version user_version qui marque l'application complète des migrations V2.1
 const V2_1_USER_VERSION: i32 = 11;
@@ -19,8 +26,10 @@ pub fn get_db_path(app: &AppHandle) -> Result<PathBuf, String> {
 }
 
 /// Crée une copie de sauvegarde du fichier SQLite avant les migrations.
+/// Utilise VACUUM INTO pour garantir un backup cohérent même en mode WAL
+/// (les fichiers .db-wal et .db-shm sont intégrés dans le backup).
 /// Nom : comportement_backup_{timestamp_unix}.sqlite dans le même dossier.
-pub fn backup_database(db_path: &PathBuf) -> Result<PathBuf, String> {
+pub async fn backup_database(db_path: &PathBuf) -> Result<PathBuf, String> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
@@ -56,10 +65,19 @@ pub fn backup_database(db_path: &PathBuf) -> Result<PathBuf, String> {
         .ok_or("Impossible de déterminer le dossier parent de la DB")?
         .join(&backup_name);
 
-    std::fs::copy(db_path, &backup_path)
-        .map_err(|e| format!("Échec du backup DB : {}", e))?;
+    // VACUUM INTO produit un backup cohérent en mode WAL (inclut .db-wal/.db-shm)
+    let db_url = format!("sqlite:{}", db_path.display());
+    let mut conn = sqlx::sqlite::SqliteConnection::connect(&db_url)
+        .await
+        .map_err(|e| format!("Backup: impossible d'ouvrir la DB : {}", e))?;
 
-    println!("[migrations] Backup créé : {}", backup_path.display());
+    let vacuum_sql = format!("VACUUM INTO '{}'", backup_path.display());
+    sqlx::query(&vacuum_sql)
+        .execute(&mut conn)
+        .await
+        .map_err(|e| format!("Échec du backup VACUUM INTO : {}", e))?;
+
+    println!("[migrations] Backup créé (VACUUM INTO) : {}", backup_path.display());
     Ok(backup_path)
 }
 
@@ -89,6 +107,12 @@ pub async fn apply_m013_if_needed(
         .unwrap_or(false);
 
     if needs_migration {
+        // SAVEPOINT pour rendre l'opération atomique (ADR-013)
+        sqlx::query("SAVEPOINT sp_m013")
+            .execute(&mut *conn)
+            .await
+            .map_err(|e| format!("M013 SAVEPOINT: {}", e))?;
+
         // Pattern rename-copy-drop-rename (SQLite ne supporte pas DROP CONSTRAINT)
         let stmts = [
             "CREATE TABLE appreciations_generales_new (
@@ -109,13 +133,31 @@ pub async fn apply_m013_if_needed(
             "DROP TABLE appreciations_generales",
             "ALTER TABLE appreciations_generales_new RENAME TO appreciations_generales",
         ];
+
+        let mut m013_ok = true;
         for stmt in &stmts {
-            sqlx::query(stmt)
+            if let Err(e) = sqlx::query(stmt).execute(&mut *conn).await {
+                eprintln!("[migrations] M013 erreur : {}", e);
+                m013_ok = false;
+                break;
+            }
+        }
+
+        if m013_ok {
+            sqlx::query("RELEASE sp_m013")
                 .execute(&mut *conn)
                 .await
-                .map_err(|e| format!("M013: {}", e))?;
+                .map_err(|e| format!("M013 RELEASE: {}", e))?;
+            println!("[migrations] M013 appliquée : UNIQUE(eleve_id, periode_id) supprimée.");
+        } else {
+            let _ = sqlx::query("ROLLBACK TO SAVEPOINT sp_m013")
+                .execute(&mut *conn)
+                .await;
+            let _ = sqlx::query("RELEASE sp_m013")
+                .execute(&mut *conn)
+                .await;
+            return Err("M013 échouée → rollback. Table appreciations_generales intacte.".into());
         }
-        println!("[migrations] M013 appliquée : UNIQUE(eleve_id, periode_id) supprimée.");
     } else {
         println!("[migrations] M013 skip : contrainte UNIQUE absente (déjà migrée).");
     }
@@ -145,6 +187,21 @@ pub async fn apply_m013_if_needed(
 /// 3. Si PRAGMA user_version >= 11 → déjà appliqué, idempotent
 /// 4. Sinon : backup + 12 migrations M001-M012 avec SAVEPOINT + M013 conditionnel + PRAGMA user_version = 11
 pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
+    // Fast path : si déjà fait, skip immédiatement
+    if MIGRATIONS_DONE.load(Ordering::Acquire) {
+        println!("[migrations] Migrations V2.1 déjà complétées (fast path).");
+        return Ok(());
+    }
+
+    // Lock pour empêcher l'exécution concurrente (setup vs ensure_v2_1_migrations)
+    let _guard = MIGRATION_LOCK.lock().await;
+
+    // Double-check après acquisition du lock
+    if MIGRATIONS_DONE.load(Ordering::Acquire) {
+        println!("[migrations] Migrations V2.1 déjà complétées (après lock).");
+        return Ok(());
+    }
+
     let db_path = get_db_path(app)?;
 
     // Cas fresh install : fichier DB pas encore créé par tauri-plugin-sql
@@ -181,6 +238,7 @@ pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
         .map_err(|e| format!("Impossible de lire PRAGMA user_version : {}", e))?;
 
     if user_version >= V2_1_USER_VERSION {
+        MIGRATIONS_DONE.store(true, Ordering::Release);
         println!("[migrations] Migrations V2.1 déjà appliquées (user_version={}).", user_version);
         return Ok(());
     }
@@ -190,8 +248,8 @@ pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
         user_version
     );
 
-    // Backup avant toute modification
-    backup_database(&db_path)?;
+    // Backup avant toute modification (VACUUM INTO = cohérent en mode WAL)
+    backup_database(&db_path).await?;
 
     // Appliquer les 8 migrations V2.1 avec SAVEPOINT
     let migrations = v2_1::migrations();
@@ -351,6 +409,9 @@ pub async fn run_v2_1_migrations(app: &AppHandle) -> Result<(), String> {
         .execute(&mut conn)
         .await
         .map_err(|e| format!("Impossible de mettre à jour PRAGMA user_version : {}", e))?;
+
+    // Marquer comme fait pour le fast path
+    MIGRATIONS_DONE.store(true, Ordering::Release);
 
     println!(
         "[migrations] ✅ Toutes les migrations V2.1 appliquées (user_version={}).",
@@ -642,20 +703,38 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let db_path = dir.path().join("test.sqlite");
 
-        // Créer un fichier DB factice
-        std::fs::write(&db_path, b"SQLite format 3").unwrap();
+        // Créer une vraie DB SQLite (VACUUM INTO nécessite un fichier SQLite valide)
+        let url = format!("sqlite:{}?mode=rwc", db_path.display());
+        let mut conn = sqlx::sqlite::SqliteConnection::connect(&url)
+            .await
+            .unwrap();
+        sqlx::query("CREATE TABLE test_table (id INTEGER PRIMARY KEY)")
+            .execute(&mut conn)
+            .await
+            .unwrap();
+        sqlx::query("INSERT INTO test_table (id) VALUES (1), (2), (3)")
+            .execute(&mut conn)
+            .await
+            .unwrap();
+        drop(conn);
 
-        let result = backup_database(&db_path);
+        let result = backup_database(&db_path).await;
         assert!(result.is_ok(), "Le backup doit réussir");
 
         let backup_path = result.unwrap();
         assert!(backup_path.exists(), "Le fichier backup doit exister");
         assert_ne!(backup_path, db_path, "Le backup doit avoir un nom différent");
 
-        // Vérifier le contenu identique
-        let original = std::fs::read(&db_path).unwrap();
-        let backup = std::fs::read(&backup_path).unwrap();
-        assert_eq!(original, backup, "Le backup doit être identique à l'original");
+        // Vérifier que le backup contient les données
+        let backup_url = format!("sqlite:{}", backup_path.display());
+        let mut backup_conn = sqlx::sqlite::SqliteConnection::connect(&backup_url)
+            .await
+            .unwrap();
+        let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM test_table")
+            .fetch_one(&mut backup_conn)
+            .await
+            .unwrap();
+        assert_eq!(count, 3, "Le backup doit contenir les 3 lignes insérées");
     }
 
     #[tokio::test]
